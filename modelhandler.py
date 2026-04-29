@@ -142,7 +142,7 @@ class ModelManager():
         if self.train_transforms == None:
             self.train_dataset = torchvision.datasets.ImageFolder(root=self.train_path, transform = default_train_transform)
         else:
-            self.train_dataset = torchvision.datasets.ImageFolder(root=self.test_path, transform = self.train_transforms)
+            self.train_dataset = torchvision.datasets.ImageFolder(root=self.train_path, transform = self.train_transforms)
 
         self.train_dataloader = DataLoader(self.train_dataset, batch_size=self.train_bs, shuffle=True)
 
