@@ -33,6 +33,8 @@ class ModelManager():
         loss_fn = torch.nn.CrossEntropyLoss()
         test_loss = 0
         test_acc = 0
+        all_preds = []
+        all_labels = []
         with torch.no_grad():
             print("<-------------------------------- Testing! -------------------------------->")
             for X, y in self.test_dataloader:
@@ -40,6 +42,11 @@ class ModelManager():
                 y = y.to(device)
 
                 y_pred = self.model(X)
+                _, preds = torch.max(y_pred, 1)
+
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(y.cpu().numpy())
+
                 loss = loss_fn(y_pred, y)
 
                 test_loss += loss.item()
@@ -49,7 +56,11 @@ class ModelManager():
             avg_test_acc = test_acc / len(self.test_dataloader)
 
             print(f"Test Loss: {avg_test_loss} || Test Accuracy: {avg_test_acc}")
-            
+            print(f"Test Precision: {precision_score(all_labels, all_preds, average='macro')}")
+            print(f"Test Recall: {recall_score(all_labels, all_preds, average='macro')}")
+            print(f"Test F1-Score: {f1_score(all_labels, all_preds, average='macro')}")
+
+        return all_labels, all_preds
 
     def train(self):
         """Training loop"""
@@ -65,6 +76,7 @@ class ModelManager():
 
         EPOCHS = self.epochs
         print("<-------------------------------- Training! -------------------------------->")
+        losses = []
         for epoch in range(EPOCHS):
             train_loss = 0
             train_acc = 0
@@ -91,6 +103,9 @@ class ModelManager():
             avg_train_acc = train_acc / len(self.train_dataloader)
 
             print(f"Epoch: {epoch + 1} || Train Loss: {avg_train_loss} || Train Accuracy {avg_train_acc}")
+            losses.append(avg_train_loss)
+
+        return losses
 
     def build(self):
         """Model build process"""
@@ -146,4 +161,5 @@ class ModelManager():
 
         self.train_dataloader = DataLoader(self.train_dataset, batch_size=self.train_bs, shuffle=True)
 
+        return self.train_dataset.classes
 

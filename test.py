@@ -1,5 +1,6 @@
 from modelhandler import ModelManager
 from securityhandler import SecurityManager
+from graphhandler import GraphManager
 from torchvision import transforms
 
 training_transform = transforms.Compose([transforms.RandomResizedCrop(224, scale=(0.7, 1.0)),
@@ -26,11 +27,14 @@ testing_transform = transforms.Compose([transforms.Resize(256),
 sh = SecurityManager("/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/hymenoptera_data")
 if sh.validate_path():
     mm = ModelManager("/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/hymenoptera_data/train", "/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/hymenoptera_data/test", 10, training_transform, testing_transform, 1e-4, 32, 64, True)
-    train_dataloader = mm.train_transforms_dataset()
-    test_dataloader = mm.test_transforms_dataset()
+    class_names = mm.train_transforms_dataset()
+    mm.test_transforms_dataset()
     model = mm.build()
-    mm.train()
-    mm.test()
+    losses = mm.train()
+    gm = GraphManager(losses, 10)
+    gm.update_loss()
+    all_labels, all_preds = mm.test()
+    gm.update_confusion_matrix(all_labels, all_preds, class_names)
 
 
 
