@@ -23,9 +23,9 @@ testing_transform = transforms.Compose([transforms.Resize(256),
                                             std=[0.229, 0.224, 0.225]
                                         )])
 
-sh = SecurityManager("/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/data/archive")
+sh = SecurityManager("/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/hymenoptera_data")
 if sh.validate_path():
-    mm = ModelManager("/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/data/archive/train", "/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/data/archive/test", 10, training_transform, testing_transform, 1e-4, 32, 64, True)
+    mm = ModelManager("/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/hymenoptera_data/train", "/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/hymenoptera_data/test", 10, training_transform, testing_transform, 1e-4, 32, 64, True)
     train_dataloader = mm.train_transforms_dataset()
     test_dataloader = mm.test_transforms_dataset()
     model = mm.build()

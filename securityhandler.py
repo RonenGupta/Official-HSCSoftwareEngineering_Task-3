@@ -5,7 +5,7 @@ import imghdr
 class SecurityManager():
     def __init__(self, path):
         self.path = path
-        self.base_data_dir = "./data"
+        self.base_data_dir = "./hymenoptera_data"
 
     def validate_path(self):
         """Validates the path entered"""
@@ -45,7 +45,7 @@ class SecurityManager():
         test_classes = [d for d in test_dir.iterdir() if d.is_dir()]
 
         # 5. If there are less than two classes in either train or test folder, raise an error
-        if len(train_classes) | len(test_classes) < 2:
+        if len(train_classes) < 2 or len(test_classes) < 2:
             raise ValueError("Train and Test folder must have greater than 2 classes")
 
         # Get the actual class names in the train and test directory through list comprehension and sorting

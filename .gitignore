@@ -1,4 +1,4 @@
-data/
+hymenoptera_data/
 .gitattributes
 venv/
 __pycache__/
