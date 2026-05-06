@@ -2,6 +2,7 @@ import gradio as gr
 from modelhandler1 import ModelManager
 from securityhandler import SecurityManager
 from graphhandler import GraphManager
+from torchvision import transforms
 
 with gr.Blocks() as demo:
     gr.Markdown("# Training Demo")
@@ -25,19 +26,40 @@ with gr.Blocks() as demo:
         train_status = gr.Textbox(label="Status")
         train_graph = gr.Plot(label="Loss Curve")
         
-        def train_pipeline(train_folder, epochs, lr, bs, layer4):
+        def train_pipeline(train_folder, epochs, lr, bs, layer4, selected_transforms):
             
             path = train_folder.name if hasattr(train_folder, "name") else train_folder
 
+            final_transforms = []
+
+            if "Resize(256, 256)" in selected_transforms:
+                final_transforms.append(transforms.Resize((224, 224)))
             
+            if "RandomResizedCrop(224)" in selected_transforms:
+                final_transforms.append(transforms.RandomResizedCrop(224, scale=(0.6, 1.0)))
+            
+            if "RandomHorizontalFlip" in selected_transforms:
+                final_transforms.append(transforms.RandomHorizontalFlip(0.5))
+
+            if "ToTensor" in selected_transforms:
+                final_transforms.append(transforms.ToTensor())
+            
+            if "Normalize" in selected_transforms:
+                final_transforms.append(transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                             std=[0.229, 0.224, 0.225]))
+                
+            if not final_transforms:
+                train_transforms = None
+            else:
+                train_transforms = transforms.Compose(final_transforms)
+
             if not SecurityManager(path).validate_path():
                 return "Invalid training folder"
             
             mm = ModelManager()
-            mm.train_transforms_dataset(None, path, bs)
+            mm.train_transforms_dataset(train_transforms, path, bs)
             mm.build(layer4)
 
-            
             gen =  mm.train(epochs, lr)
             try:
                 while True:
@@ -51,7 +73,7 @@ with gr.Blocks() as demo:
         
         train_btn.click(
             fn=train_pipeline,
-            inputs=[train_path_input, epoch_input, lr_input, bs_input, layer4_input],
+            inputs=[train_path_input, epoch_input, lr_input, bs_input, layer4_input, train_transforms_input],
             outputs=[train_status, train_graph]
 )
 
