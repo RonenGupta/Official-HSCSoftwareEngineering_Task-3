@@ -1,6 +1,7 @@
 import gradio as gr
 from modelhandler1 import ModelManager
 from securityhandler import SecurityManager
+from graphhandler import GraphManager
 
 with gr.Blocks() as demo:
     gr.Markdown("# Training Demo")
@@ -22,8 +23,8 @@ with gr.Blocks() as demo:
         layer4_input = gr.Checkbox(label="Use Layer4")
         train_btn = gr.Button("Start Training")
         train_status = gr.Textbox(label="Status")
-        model_indicator=gr.Label(value="Model Not Trained", label="Registry")
-
+        train_graph = gr.Plot(label="Loss Curve")
+        
         def train_pipeline(train_folder, epochs, lr, bs, layer4):
             
             path = train_folder.name if hasattr(train_folder, "name") else train_folder
@@ -31,20 +32,27 @@ with gr.Blocks() as demo:
             
             if not SecurityManager(path).validate_path():
                 return "Invalid training folder"
-
             
             mm = ModelManager()
             mm.train_transforms_dataset(None, path, bs)
             mm.build(layer4)
 
             
-            for log in mm.train(epochs, lr):
-                yield log
-
+            gen =  mm.train(epochs, lr)
+            try:
+                while True:
+                    log = next(gen)
+                    yield log, None
+            except StopIteration as e:
+                losses = e.value
+                gm = GraphManager(losses, epochs)
+                fig = gm.update_loss()
+            yield log, fig
+        
         train_btn.click(
             fn=train_pipeline,
             inputs=[train_path_input, epoch_input, lr_input, bs_input, layer4_input],
-            outputs=train_status
+            outputs=[train_status, train_graph]
 )
 
 if __name__ == "__main__":

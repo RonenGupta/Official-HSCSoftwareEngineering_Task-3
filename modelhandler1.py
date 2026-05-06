@@ -69,6 +69,7 @@ class ModelManager():
 
         EPOCHS = epochs
         print("<-------------------------------- Training! -------------------------------->")
+        losses = []
         for epoch in range(EPOCHS):
             train_loss = 0
             train_acc = 0
@@ -95,8 +96,11 @@ class ModelManager():
             avg_train_acc = train_acc / len(self.train_dataloader)
             
             log += f"Epoch: {epoch + 1} || Train Loss: {avg_train_loss} || Train Accuracy {avg_train_acc}\n"
+            losses.append(avg_train_loss)
 
             yield log
+        print(losses)
+        return losses
 
     def build(self, layer4: bool = False):
         """Model build process"""
