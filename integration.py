@@ -1,9 +1,10 @@
-from interfacehandler import Train_Tab
+from interfacehandler import Train_Tab, Test_Tab
 import gradio as gr
 
 
 with gr.Blocks() as demo:
-    tt = Train_Tab()
+    train = Train_Tab()
+    test = Test_Tab()
 
 if __name__ == "__main__":
     demo.launch()

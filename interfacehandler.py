@@ -6,9 +6,9 @@ from torchvision import transforms
 
 class Train_Tab():
     def __init__(self):
-        gr.Markdown("# Training Demo")
-
+        
         with gr.Tab("Train"):
+            gr.Markdown("# Training Demo")
             transform_options = [
                 "Resize(256, 256)",
                 "CenterCrop(224)",
@@ -81,7 +81,76 @@ class Train_Tab():
             gm = GraphManager(losses, epochs)
             fig = gm.update_loss()
         yield log, fig
-    
-    
+
+class Test_Tab():
+    def __init__(self):
+        
+        with gr.Tab("Test"):
+            gr.Markdown("# Testing Demo")
+            transform_options = [
+                "Resize(256, 256)",
+                "CenterCrop(224)",
+                "RandomResizedCrop(224)",
+                "RandomHorizontalFlip",
+                "ToTensor",
+                "Normalize"
+            ]
+            self.model = gr.Dropdown(choices=["model1", "model2", "model3"], label="Select a saved model for testing!", interactive=True)
+            self.bs_input = gr.Number(label="Batch Size")
+            self.test_path_input = gr.Textbox(label="Testing Folder Path", placeholder="/absolute/path/to/your/dataset")
+            self.test_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for testing!")
+            self.test_btn = gr.Button("Start Training")
+            with gr.Row(equal_height=True):
+                self.test_status = gr.Textbox(label="Status")
+                self.test_graph = gr.Plot(label="Confusion Matrix")
+
+            self.test_btn.click(
+            fn=self.test_pipeline,
+            inputs=[self.test_path_input, self.bs_input, self.test_transforms_input],
+            outputs=[self.test_status, self.test_graph])
+
+    def test_pipeline(self, model, test_folder, bs, selected_transforms):
+
+        path = test_folder.name if hasattr(test_folder, "name") else test_folder
+
+        final_transforms = []
+
+        if "Resize(256, 256)" in selected_transforms:
+            final_transforms.append(transforms.Resize((224, 224)))
+        
+        if "CenterCrop(224)" in selected_transforms:
+            final_transforms.append(transforms.CenterCrop(224))
+        
+        if "RandomResizedCrop(224)" in selected_transforms:
+            final_transforms.append(transforms.RandomResizedCrop(224, scale=(0.6, 1.0)))
+        
+        if "RandomHorizontalFlip" in selected_transforms:
+            final_transforms.append(transforms.RandomHorizontalFlip(0.5))
+
+        if "ToTensor" in selected_transforms:
+            final_transforms.append(transforms.ToTensor())
+        
+        if "Normalize" in selected_transforms:
+            final_transforms.append(transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                        std=[0.229, 0.224, 0.225]))
+            
+        if not final_transforms:
+            test_transforms = None
+        else:
+            test_transforms = transforms.Compose(final_transforms)
+        
+        if not SecurityManager(path).validate_path():
+            return "Invalid training folder", None
+        
+        mm = ModelManager()
+        mm.test_transforms_dataset(test_transforms, path, bs)
+
+        test_metrics, all_labels, all_preds =  mm.test()
+        gm = GraphManager(None, None)
+        fig = gm.update_confusion_matrix(all_labels, all_preds)
+
+        return test_metrics, fig
+
+        
 
 
