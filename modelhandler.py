@@ -17,16 +17,8 @@ else:
 device
 
 class ModelManager():
-    def __init__(self, train_path: str, test_path: str, epochs: int, train_transforms: transforms.Compose | None, test_transforms: transforms.Compose | None, lr: float = 0.01, train_bs: int = 32, test_bs: int = 32, layer4: bool = False):
-        self.epochs = epochs
-        self.lr = lr
-        self.train_bs = train_bs
-        self.test_bs = test_bs
-        self.train_path = train_path
-        self.test_path = test_path
-        self.train_transforms = train_transforms
-        self.test_transforms = test_transforms
-        self.layer4 = layer4
+    def __init__(self):
+        pass
 
     def test(self):
         """Testing loop"""
@@ -62,8 +54,9 @@ class ModelManager():
 
         return all_labels, all_preds
 
-    def train(self):
+    def train(self, epochs: int, lr: float = 0.01):
         """Training loop"""
+        log = ""
         param_list = []
 
         for param in self.model.parameters():
@@ -72,9 +65,9 @@ class ModelManager():
 
         loss_fn = torch.nn.CrossEntropyLoss()
 
-        optimizer = torch.optim.Adam(param_list, self.lr)
+        optimizer = torch.optim.Adam(param_list, lr)
 
-        EPOCHS = self.epochs
+        EPOCHS = epochs
         print("<-------------------------------- Training! -------------------------------->")
         losses = []
         for epoch in range(EPOCHS):
@@ -101,13 +94,14 @@ class ModelManager():
 
             avg_train_loss = train_loss / len(self.train_dataloader)
             avg_train_acc = train_acc / len(self.train_dataloader)
-
-            print(f"Epoch: {epoch + 1} || Train Loss: {avg_train_loss} || Train Accuracy {avg_train_acc}")
+            
+            log += f"Epoch: {epoch + 1} || Train Loss: {avg_train_loss} || Train Accuracy {avg_train_acc}\n"
             losses.append(avg_train_loss)
 
+            yield log
         return losses
 
-    def build(self):
+    def build(self, layer4: bool = False):
         """Model build process"""
         self.model = torchvision.models.resnet18(weights=ResNet18_Weights.DEFAULT).to(device)
         self.model.fc = torch.nn.Sequential(
@@ -122,14 +116,14 @@ class ModelManager():
         for param in self.model.fc.parameters():
             param.requires_grad = True
         
-        if self.layer4:
+        if layer4:
             for param in self.model.layer4.parameters():
                 param.requires_grad = True
 
         for name, param in self.model.named_parameters():
             print(name, param.requires_grad)
     
-    def test_transforms_dataset(self):
+    def test_transforms_dataset(self, test_path: str, test_transforms: transforms.Compose | None, test_bs: int = 32):
         """Setup dataloader for testing data"""
         default_test_transform = transforms.Compose([
                                              transforms.Resize((224, 224)),
@@ -138,13 +132,13 @@ class ModelManager():
                                              transforms.Normalize(mean=[0.485, 0.456, 0.406], 
                                                                   std=[0.229, 0.224, 0.225])
                                             ])
-        if self.test_transforms == None:
-            self.test_dataset = torchvision.datasets.ImageFolder(root=self.test_path, transform = default_test_transform)
+        if test_transforms == None:
+            self.test_dataset = torchvision.datasets.ImageFolder(root=test_path, transform = default_test_transform)
         else:
-            self.test_dataset = torchvision.datasets.ImageFolder(root=self.test_path, transform = self.test_transforms)
-        self.test_dataloader = DataLoader(self.test_dataset, batch_size=self.test_bs, shuffle=True)
+            self.test_dataset = torchvision.datasets.ImageFolder(root=test_path, transform = test_transforms)
+        self.test_dataloader = DataLoader(self.test_dataset, batch_size=test_bs, shuffle=True)
     
-    def train_transforms_dataset(self):
+    def train_transforms_dataset(self, train_transforms: transforms.Compose | None, train_path: str, train_bs: int = 32,):
         """Setup dataloader for training data"""
         default_train_transform = transforms.Compose([
                                               transforms.Resize((256, 256)),
@@ -154,12 +148,10 @@ class ModelManager():
                                               transforms.Normalize(mean=[0.485, 0.456, 0.406], 
                                                                    std=[0.229, 0.224, 0.225])
                                               ])
-        if self.train_transforms == None:
-            self.train_dataset = torchvision.datasets.ImageFolder(root=self.train_path, transform = default_train_transform)
+        if train_transforms == None:
+            self.train_dataset = torchvision.datasets.ImageFolder(root=train_path, transform = default_train_transform)
         else:
-            self.train_dataset = torchvision.datasets.ImageFolder(root=self.train_path, transform = self.train_transforms)
+            self.train_dataset = torchvision.datasets.ImageFolder(root=train_path, transform = train_transforms)
 
-        self.train_dataloader = DataLoader(self.train_dataset, batch_size=self.train_bs, shuffle=True)
-
-        return self.train_dataset.classes
+        self.train_dataloader = DataLoader(self.train_dataset, batch_size=train_bs, shuffle=True)
 

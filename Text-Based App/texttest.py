@@ -1,4 +1,4 @@
-from modelhandler import ModelManager
+from textmodelhandler import ModelManager
 from securityhandler import SecurityManager
 from graphhandler import GraphManager
 from torchvision import transforms
