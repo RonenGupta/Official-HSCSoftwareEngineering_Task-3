@@ -4,6 +4,10 @@ from securityhandler import SecurityManager
 from graphhandler import GraphManager
 from torchvision import transforms
 import bcrypt
+import os
+import json
+
+USER_DB = "users.json"
 
 class Train_Tab():
     def __init__(self):
@@ -156,4 +160,86 @@ class LoginSignUp():
     def __init__(self):    
         self.current_user = gr.State(value=None)
 
+        with gr.Tab("Login / Sign Up"):
+            gr.Markdown("Login / Sign Up")
+            self.login_username = gr.Textbox(label="Username")
+            self.login_password = gr.Textbox(label="Password")
+            self.login_btn = gr.Button("Login")
+            self.login_status = gr.Textbox(label="Status", interactive=False)
 
+            self.login_btn.click(fn=self.login_pipeline,
+                                 inputs=[self.login_username, self.login_password],
+                                 outputs=[self.login_status, self.current_user]
+                                 )
+            gr.Markdown("---")
+            gr.Markdown("Sign Up")
+            self.signup_username = gr.Textbox(label="Username")
+            self.signup_password = gr.Textbox(label="Password")
+            self.signup_btn = gr.Button("Create Account")
+            self.signup_status = gr.Textbox(label="Status", interactive=False)
+
+            self.signup_btn.click(
+                fn=self.signup_pipeline,
+                inputs=[self.signup_username, self.signup_password],
+                outputs=self.signup_status
+            )
+
+    @staticmethod
+    def load_users():
+        try:
+            if not os.path.exists(USER_DB):
+                return {}
+            with open(USER_DB, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            return f"Exception: {e}"
+        
+    @staticmethod
+    def save_users(users):
+        try:
+            with open(USER_DB, "w") as f:
+                json.dump(users, f, indent=4)
+        except Exception as e:
+            return f"Exception: {e}"
+
+    @staticmethod
+    def hash_password(password: str):
+        try:
+            return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        except Exception as e:
+            return f"Exception: {e}"
+
+    @staticmethod
+    def check_password(password: str, hashed: str):
+        try:
+            return bcrypt.checkpw(password.encode(), hashed.encode())
+        except Exception as e:
+            return f"Exception: {e}"
+
+    def signup_pipeline(self, username, password):
+        users = self.load_users()
+
+        if not username or not password:
+            return "Username and password required"
+
+        if username in users:
+            return "Username already exists"
+        
+        users[username] = {
+            "password": self.hash_password(password),
+            "models": {}
+        }
+
+        self.save_users(users)
+        return "Account created!"
+    
+    def login_pipeline(self, username, password):
+        users = self.load_users()
+
+        if username not in users:
+            return "User not found", None
+        
+        if not self.check_password(password, users[username]["password"]):
+            return "Incorrect password", None
+        
+        return f"Welcome {username}!", username
