@@ -1,0 +1,13 @@
+{
+    "user1": {
+        "password": "hashedpassword1",
+        "models": {
+            "model1": "path/to/model1.pth",
+            "model2": "path/to/model2.pth"
+        }
+    },
+    "user2": {
+        "password": "hashedpassword2",
+        "models": {}
+    }
+}

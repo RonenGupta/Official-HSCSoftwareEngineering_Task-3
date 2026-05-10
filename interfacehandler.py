@@ -3,6 +3,7 @@ from modelhandler import ModelManager
 from securityhandler import SecurityManager
 from graphhandler import GraphManager
 from torchvision import transforms
+import bcrypt
 
 class Train_Tab():
     def __init__(self):
@@ -143,14 +144,16 @@ class Test_Tab():
             return "Invalid training folder", None
         
         mm = ModelManager()
-        mm.test_transforms_dataset(test_transforms, path, bs)
+        class_names = mm.test_transforms_dataset(test_transforms, path, bs)
 
-        test_metrics, all_labels, all_preds =  mm.test()
+        test_metrics, all_labels, all_preds =  mm.test(model)
         gm = GraphManager(None, None)
-        fig = gm.update_confusion_matrix(all_labels, all_preds)
+        fig = gm.update_confusion_matrix(all_labels, all_preds, class_names)
 
         return test_metrics, fig
 
-        
+class LoginSignUp():
+    def __init__(self):    
+        self.current_user = gr.State(value=None)
 
 

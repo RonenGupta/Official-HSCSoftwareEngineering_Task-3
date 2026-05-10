@@ -3,7 +3,8 @@ import torchvision
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from torchvision.models import resnet18, ResNet18_Weights
-import numpy as np  
+import numpy as np
+import json  
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 torch.manual_seed(42)
@@ -20,7 +21,7 @@ class ModelManager():
     def __init__(self):
         pass
 
-    def test(self):
+    def test(self, model):
         """Testing loop"""
         loss_fn = torch.nn.CrossEntropyLoss()
         test_loss = 0
@@ -33,7 +34,7 @@ class ModelManager():
                 X = X.to(device)
                 y = y.to(device)
 
-                y_pred = self.model(X)
+                y_pred = model(X)
                 _, preds = torch.max(y_pred, 1)
 
                 all_preds.extend(preds.cpu().numpy())
@@ -134,6 +135,8 @@ class ModelManager():
         else:
             self.test_dataset = torchvision.datasets.ImageFolder(root=test_path, transform = test_transforms)
         self.test_dataloader = DataLoader(self.test_dataset, batch_size=test_bs, shuffle=True)
+
+        return self.test_dataset.classes
     
     def train_transforms_dataset(self, train_transforms: transforms.Compose | None, train_path: str, train_bs: int = 32,):
         """Setup dataloader for training data"""
@@ -151,4 +154,5 @@ class ModelManager():
             self.train_dataset = torchvision.datasets.ImageFolder(root=train_path, transform = train_transforms)
 
         self.train_dataloader = DataLoader(self.train_dataset, batch_size=train_bs, shuffle=True)
+
 
