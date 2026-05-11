@@ -10,7 +10,7 @@ import json
 USER_DB = "users.json"
 
 class Train_Tab():
-    def __init__(self):
+    def __init__(self, current_user):
         
         with gr.Tab("Train"):
             gr.Markdown("# Training Demo")
@@ -23,21 +23,32 @@ class Train_Tab():
                 "Normalize"
             ]
 
+            self.current_user = current_user
             self.lr_input= gr.Slider(0.0001, 0.1, label="Learning Rate")
             self.epoch_input = gr.Number(label="Epochs")
             self.bs_input = gr.Number(label="Batch Size")
             self.train_path_input = gr.Textbox(label="Training Folder Path", placeholder="/absolute/path/to/your/dataset")
             self.train_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for training!")
             self.layer4_input = gr.Checkbox(label="Use Layer4")
-            self.train_btn = gr.Button("Start Training")
             with gr.Row(equal_height=True):
-                self.train_status = gr.Textbox(label="Status")
+                with gr.Column():
+                    self.save_model_name = gr.Textbox(label="Saved Model Name", placeholder="model1")
+                    self.save_btn = gr.Button("Save Model")
+                self.save_status = gr.Textbox(label="Save Status", interactive=False)
+                self.train_btn = gr.Button("Start Training")
+            with gr.Row(equal_height=True):
+                self.train_status = gr.Textbox(label="Status", interactive=False)
                 self.train_graph = gr.Plot(label="Loss Curve")
 
             self.train_btn.click(
             fn=self.train_pipeline,
             inputs=[self.train_path_input, self.epoch_input, self.lr_input, self.bs_input, self.layer4_input, self.train_transforms_input],
             outputs=[self.train_status, self.train_graph])
+
+            self.save_btn.click(
+            fn=self.save_model,
+            inputs=[self.current_user, self.save_model_name],
+            outputs=[self.save_status])
         
     def train_pipeline(self, train_folder, epochs, lr, bs, layer4, selected_transforms):
         
@@ -85,7 +96,20 @@ class Train_Tab():
             losses = e.value
             gm = GraphManager(losses, epochs)
             fig = gm.update_loss()
+
+        self.trained_model = mm.model
+
         yield log, fig
+
+    def save_model(self, user, model_name):
+        if not hasattr(self, "trained_model"):
+            return "No model to train"
+        
+        if not model_name:
+            return "Must pass model name"
+        
+        mm = ModelManager()
+        return mm.save_model(self.trained_model, user, model_name)
 
 class Test_Tab():
     def __init__(self):

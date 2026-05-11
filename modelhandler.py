@@ -6,6 +6,7 @@ from torchvision.models import resnet18, ResNet18_Weights
 import numpy as np
 import json  
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from pathlib import Path
 
 torch.manual_seed(42)
 
@@ -16,6 +17,8 @@ elif torch.backends.mps.is_available():
 else:
     device = torch.device("cpu")
 device
+
+USERS_JSON = Path("users.json")
 
 class ModelManager():
     def __init__(self):
@@ -95,7 +98,7 @@ class ModelManager():
             
             log += f"Epoch: {epoch + 1} || Train Loss: {avg_train_loss} || Train Accuracy {avg_train_acc}\n"
             losses.append(avg_train_loss)
-
+            
             yield log
         return losses
 
@@ -154,5 +157,32 @@ class ModelManager():
             self.train_dataset = torchvision.datasets.ImageFolder(root=train_path, transform = train_transforms)
 
         self.train_dataloader = DataLoader(self.train_dataset, batch_size=train_bs, shuffle=True)
+
+    def save_model(self, model, username, model_name):
+
+        with open(USERS_JSON, "r") as f:
+            users = json.load(f)
+        
+        if username not in users:
+            return "User not found"
+        
+        models = users[username].get("models", {})
+
+        if model_name in models:
+            model_path = Path(models[model_name])
+
+        else:
+
+            model_path = Path(f"saved_models/{username}_{model_name}.pth")
+
+            models[model_name] = str(model_path)
+            users[username]["models"] = models
+
+            with open (USERS_JSON, "w") as f:
+                json.dump(users, f, indent=4)
+
+        torch.save(model.state_dict(), model_path)
+
+        return f"Model '{model_name}' saved!"
 
 

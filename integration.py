@@ -6,7 +6,7 @@ with gr.Blocks() as demo:
     login = LoginSignUp()
 
     with gr.Tab("Train") as train_tab:
-        train = Train_Tab()
+        train = Train_Tab(login.current_user)
 
     with gr.Tab("Test") as test_tab:
         test = Test_Tab()
