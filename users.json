@@ -9,9 +9,5 @@
     "user2": {
         "password": "hashedpassword2",
         "models": {}
-    },
-    "username1": {
-        "password": "$2b$12$GObw/o0qVqxHmUz8nlNlpOencL/dneSeYMhpvcMjm/L6H6URd.q9i",
-        "models": {}
     }
 }
