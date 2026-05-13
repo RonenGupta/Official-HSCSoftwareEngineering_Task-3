@@ -124,7 +124,7 @@ class ModelManager():
         for name, param in self.model.named_parameters():
             print(name, param.requires_grad)
     
-    def test_transforms_dataset(self, test_path: str, test_transforms: transforms.Compose | None, test_bs: int = 32):
+    def test_transforms_dataset(self, test_transforms: transforms.Compose | None, test_path: str, test_bs: int = 32):
         """Setup dataloader for testing data"""
         default_test_transform = transforms.Compose([
                                              transforms.Resize((224, 224)),
