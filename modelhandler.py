@@ -51,7 +51,7 @@ class ModelManager():
             avg_test_loss = test_loss / len(self.test_dataloader)
             avg_test_acc = test_acc / len(self.test_dataloader)
 
-            test_metrics = f"Test Loss: {avg_test_loss} || Test Accuracy: {avg_test_acc}\n Test Precision: {precision_score(all_labels, all_preds, average='macro')}\nfTest Recall: {recall_score(all_labels, all_preds, average='macro')}\nTest F1-Score: {f1_score(all_labels, all_preds, average='macro')}"
+            test_metrics = f"Test Loss: {avg_test_loss} || Test Accuracy: {avg_test_acc}\n Test Precision: {precision_score(all_labels, all_preds, average='macro')}\nTest Recall: {recall_score(all_labels, all_preds, average='macro')}\nTest F1-Score: {f1_score(all_labels, all_preds, average='macro')}"
 
         return test_metrics, all_labels, all_preds
 
@@ -185,4 +185,24 @@ class ModelManager():
 
         return f"Model '{model_name}' saved!"
 
+    def load_model(self, username, model_name, layer4, num_classes = 2):
+        with open(USERS_JSON, 'r') as f:
+            users = json.load(f)
+        user_models = users[username].get("models", {})
+        model_path = user_models[model_name]
+        self.model = torchvision.models.resnet18(weights=None).to(device)
+        self.model.fc = torch.nn.Sequential(
+        torch.nn.Dropout(p=0.2, inplace=True),
+        torch.nn.Linear(512, num_classes)).to(device)
 
+        for param in self.model.parameters():
+            param.requires_grad = False
+
+        if layer4:
+            for param in self.model.layer4.parameters():
+                param.requires_grad = True
+        state_dict = torch.load(model_path, map_location=device)
+        self.model.load_state_dict(state_dict)
+        self.model.eval()
+
+        return self.model

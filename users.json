@@ -9,5 +9,11 @@
     "user2": {
         "password": "hashedpassword2",
         "models": {}
+    },
+    "username1": {
+        "password": "$2b$12$viuFXuyUBSdCX713Lf0GO.rBcNHhn5LKtPRMCemtcFyEGYq9i/5J6",
+        "models": {
+            "model1": "saved_models/username1_model1.pth"
+        }
     }
 }

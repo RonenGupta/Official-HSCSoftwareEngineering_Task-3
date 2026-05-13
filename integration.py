@@ -9,7 +9,7 @@ with gr.Blocks() as demo:
         train = Train_Tab(login.current_user)
 
     with gr.Tab("Test") as test_tab:
-        test = Test_Tab()
+        test = Test_Tab(login.current_user)
 
     train_tab.visible = False
     test_tab.visible = False     

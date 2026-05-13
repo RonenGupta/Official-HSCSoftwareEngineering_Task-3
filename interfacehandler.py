@@ -83,8 +83,9 @@ class Train_Tab():
         if not SecurityManager(path).validate_path():
             return "Invalid training folder", None
         
+        train_path = os.path.join(path, "train")
         mm = ModelManager()
-        mm.train_transforms_dataset(train_transforms, path, bs)
+        mm.train_transforms_dataset(train_transforms, train_path, bs)
         mm.build(layer4)
 
         gen =  mm.train(epochs, lr)
@@ -94,8 +95,8 @@ class Train_Tab():
                 yield log, None
         except StopIteration as e:
             losses = e.value
-            gm = GraphManager(losses, epochs)
-            fig = gm.update_loss()
+            gm = GraphManager()
+            fig = gm.update_loss(losses, epochs)
 
         self.trained_model = mm.model
 
@@ -112,7 +113,7 @@ class Train_Tab():
         return mm.save_model(self.trained_model, user, model_name)
 
 class Test_Tab():
-    def __init__(self):
+    def __init__(self, current_user):
         
         with gr.Tab("Test"):
             gr.Markdown("# Testing Demo")
@@ -124,10 +125,18 @@ class Test_Tab():
                 "ToTensor",
                 "Normalize"
             ]
-            self.model = gr.Dropdown(choices=["model1", "model2", "model3"], label="Select a saved model for testing!", interactive=True)
+            self.current_user = current_user
+            self.model = gr.Dropdown(choices=[], label="Select a saved model for testing!", interactive=True)
             self.bs_input = gr.Number(label="Batch Size")
             self.test_path_input = gr.Textbox(label="Testing Folder Path", placeholder="/absolute/path/to/your/dataset")
             self.test_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for testing!")
+            self.layer4_input = gr.Checkbox(label="Use Layer4 (If you trained the model with layer 4, enable this)")
+            self.refresh_btn = gr.Button("Refresh Saved Models")
+            self.refresh_btn.click(
+                fn=self.get_user_models,
+                inputs=[self.current_user],
+                outputs=[self.model]
+            )
             self.test_btn = gr.Button("Start Training")
             with gr.Row(equal_height=True):
                 self.test_status = gr.Textbox(label="Status")
@@ -135,10 +144,10 @@ class Test_Tab():
 
             self.test_btn.click(
             fn=self.test_pipeline,
-            inputs=[self.test_path_input, self.bs_input, self.test_transforms_input],
+            inputs=[self.current_user, self.model, self.layer4_input, self.test_path_input, self.bs_input, self.test_transforms_input],
             outputs=[self.test_status, self.test_graph])
 
-    def test_pipeline(self, model, test_folder, bs, selected_transforms):
+    def test_pipeline(self, username, model, layer4, test_folder, bs, selected_transforms):
 
         path = test_folder.name if hasattr(test_folder, "name") else test_folder
 
@@ -171,14 +180,26 @@ class Test_Tab():
         if not SecurityManager(path).validate_path():
             return "Invalid training folder", None
         
+        test_path = os.path.join(path, "test")
         mm = ModelManager()
-        class_names = mm.test_transforms_dataset(test_transforms, path, bs)
-
-        test_metrics, all_labels, all_preds =  mm.test(model)
-        gm = GraphManager(None, None)
+        class_names = mm.test_transforms_dataset(test_transforms, test_path, bs)
+        
+        num_classes = len(class_names)
+        loaded_model = mm.load_model(username, model, layer4, num_classes)
+        
+        test_metrics, all_labels, all_preds =  mm.test(loaded_model)
+        gm = GraphManager()
         fig = gm.update_confusion_matrix(all_labels, all_preds, class_names)
 
         return test_metrics, fig
+    
+    def get_user_models(self, username):
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+        
+        model_names = list(users[username]["models"].keys())
+        return gr.update(choices=model_names, value=None)
+    
 
 class LoginSignUp():
     def __init__(self):    
