@@ -137,7 +137,7 @@ class Test_Tab():
                 inputs=[self.current_user],
                 outputs=[self.model]
             )
-            self.test_btn = gr.Button("Start Training")
+            self.test_btn = gr.Button("Start Testing")
             with gr.Row(equal_height=True):
                 self.test_status = gr.Textbox(label="Status")
                 self.test_graph = gr.Plot(label="Confusion Matrix")

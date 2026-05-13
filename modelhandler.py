@@ -32,7 +32,6 @@ class ModelManager():
         all_preds = []
         all_labels = []
         with torch.no_grad():
-            print("<-------------------------------- Testing! -------------------------------->")
             for X, y in self.test_dataloader:
                 X = X.to(device)
                 y = y.to(device)
@@ -69,7 +68,6 @@ class ModelManager():
         optimizer = torch.optim.Adam(param_list, lr)
 
         EPOCHS = epochs
-        print("<-------------------------------- Training! -------------------------------->")
         losses = []
         for epoch in range(EPOCHS):
             train_loss = 0
@@ -120,9 +118,6 @@ class ModelManager():
         if layer4:
             for param in self.model.layer4.parameters():
                 param.requires_grad = True
-
-        for name, param in self.model.named_parameters():
-            print(name, param.requires_grad)
     
     def test_transforms_dataset(self, test_transforms: transforms.Compose | None, test_path: str, test_bs: int = 32):
         """Setup dataloader for testing data"""
