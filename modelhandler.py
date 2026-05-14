@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 from torchvision.models import resnet18, ResNet18_Weights
 import numpy as np
 import json  
+import pickle
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from pathlib import Path
 
@@ -201,3 +202,13 @@ class ModelManager():
         self.model.eval()
 
         return self.model
+    
+    def download_model(self, username, model_name):
+        with open(USERS_JSON, 'r') as f:
+            users = json.load(f)
+        user_models = users[username].get("models", {})
+        model_path = user_models[model_name]
+        state_dict = torch.load(model_path, map_location=device)
+
+        with open(f"{model_name}.pkl", "wb") as f:
+            pickle.dump(state_dict, f)
