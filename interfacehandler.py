@@ -9,6 +9,9 @@ import json
 
 USER_DB = "users.json"
 
+mm = ModelManager()
+gm= GraphManager()
+
 class Train_Tab():
     def __init__(self, current_user):
         
@@ -84,7 +87,6 @@ class Train_Tab():
             return "Invalid training folder", None
         
         train_path = os.path.join(path, "train")
-        mm = ModelManager()
         mm.train_transforms_dataset(train_transforms, train_path, bs)
         mm.build(layer4)
 
@@ -95,7 +97,6 @@ class Train_Tab():
                 yield log, None
         except StopIteration as e:
             losses = e.value
-            gm = GraphManager()
             fig = gm.update_loss(losses, epochs)
 
         self.trained_model = mm.model
@@ -108,8 +109,6 @@ class Train_Tab():
         
         if not model_name:
             return "Must pass model name"
-        
-        mm = ModelManager()
         return mm.save_model(self.trained_model, user, model_name)
 
 class Test_Tab():
@@ -189,14 +188,12 @@ class Test_Tab():
             return "Invalid training folder", None
         
         test_path = os.path.join(path, "test")
-        mm = ModelManager()
         class_names = mm.test_transforms_dataset(test_transforms, test_path, bs)
         
         num_classes = len(class_names)
         loaded_model = mm.load_model(username, model, layer4, num_classes)
         
         test_metrics, all_labels, all_preds =  mm.test(loaded_model)
-        gm = GraphManager()
         fig = gm.update_confusion_matrix(all_labels, all_preds, class_names)
 
         return test_metrics, fig
@@ -209,7 +206,6 @@ class Test_Tab():
         return gr.update(choices=model_names, value=None)
     
     def download_user_models(self, username, model):
-        mm = ModelManager()
         download_status = mm.download_model(username, model)
         return download_status
 class LoginSignUp():
