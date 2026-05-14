@@ -212,3 +212,5 @@ class ModelManager():
 
         with open(f"{model_name}.pkl", "wb") as f:
             pickle.dump(state_dict, f)
+        
+        return f"{model_name} successfully saved!"

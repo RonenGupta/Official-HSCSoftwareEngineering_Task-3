@@ -137,6 +137,14 @@ class Test_Tab():
                 inputs=[self.current_user],
                 outputs=[self.model]
             )
+            self.download_btn = gr.Button("Download selected model")
+            self.download_status = gr.Textbox(label="Download Status")
+
+            self.download_btn.click(
+                fn=self.download_user_models,
+                inputs=[self.current_user, self.model],
+                outputs=[self.download_status]
+            )
             self.test_btn = gr.Button("Start Testing")
             with gr.Row(equal_height=True):
                 self.test_status = gr.Textbox(label="Status")
@@ -200,7 +208,10 @@ class Test_Tab():
         model_names = list(users[username]["models"].keys())
         return gr.update(choices=model_names, value=None)
     
-
+    def download_user_models(self, username, model):
+        mm = ModelManager()
+        download_status = mm.download_model(username, model)
+        return download_status
 class LoginSignUp():
     def __init__(self):    
         self.current_user = gr.State(value=None)
