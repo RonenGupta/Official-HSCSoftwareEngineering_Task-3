@@ -33,10 +33,10 @@ class Train_Tab():
             self.layer4_input = gr.Checkbox(label="Use Layer4")
             with gr.Row(equal_height=True):
                 with gr.Column():
-                    self.save_model_name = gr.Textbox(label="Saved Model Name", placeholder="model1")
                     self.save_btn = gr.Button("Save Model")
-                self.save_status = gr.Textbox(label="Save Status", interactive=False)
-                self.train_btn = gr.Button("Start Training")
+                    self.save_model_name = gr.Textbox(label="Saved Model Name", placeholder="model1")
+                    self.save_status = gr.Textbox(label="Save Status", interactive=False)
+            self.train_btn = gr.Button("Start Training")
             with gr.Row(equal_height=True):
                 self.train_status = gr.Textbox(label="Status", interactive=False)
                 self.train_graph = gr.Plot(label="Loss Curve")
@@ -126,13 +126,15 @@ class Test_Tab():
             self.test_path_input = gr.Textbox(label="Testing Folder Path", placeholder="/absolute/path/to/your/dataset")
             self.test_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for testing!")
             self.layer4_input = gr.Checkbox(label="Use Layer4 (If you trained the model with layer 4, enable this)")
-            self.refresh_btn = gr.Button("Refresh Saved Models")
-            self.refresh_btn.click(
-                fn=self.get_user_models,
-                inputs=[self.current_user],
-                outputs=[self.model]
-            )
-            self.download_btn = gr.Button("Download selected model")
+            with gr.Column():
+                with gr.Row(equal_height=True):
+                        self.refresh_btn = gr.Button("Refresh Saved Models")
+                        self.refresh_btn.click(
+                            fn=self.get_user_models,
+                            inputs=[self.current_user],
+                            outputs=[self.model]
+                        )
+                        self.download_btn = gr.Button("Download selected model")
             self.download_status = gr.Textbox(label="Download Status")
 
             self.download_btn.click(
@@ -140,10 +142,11 @@ class Test_Tab():
                 inputs=[self.current_user, self.model],
                 outputs=[self.download_status]
             )
-            self.test_btn = gr.Button("Start Testing")
-            with gr.Row(equal_height=True):
-                self.test_status = gr.Textbox(label="Status")
-                self.test_graph = gr.Plot(label="Confusion Matrix")
+            with gr.Column():
+                self.test_btn = gr.Button("Start Testing")
+                with gr.Row(equal_height=True):
+                    self.test_status = gr.Textbox(label="Status")
+                    self.test_graph = gr.Plot(label="Confusion Matrix")
 
             self.test_btn.click(
             fn=self.test_pipeline,

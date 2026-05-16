@@ -1,7 +1,7 @@
 from interfacehandler import Train_Tab, Test_Tab, LoginSignUp
 import gradio as gr
 
-with gr.Blocks(theme=gr.themes.Monochrome()) as demo:
+with gr.Blocks(theme=gr.themes.Monochrome(), fill_height=True, fill_width=True) as demo:
 
     with gr.Group():
         with gr.Group(visible=True) as login_tab:
@@ -19,20 +19,31 @@ with gr.Blocks(theme=gr.themes.Monochrome()) as demo:
             )
 
     def show_train(status, user):
-            if user:
-                return (
-                    gr.update(visible=False),
-                    gr.update(visible=True),
-                    gr.update(visible=False)
-                )
+        if user:
+            return (
+                gr.update(visible=False),
+                gr.update(visible=True),
+                gr.update(visible=False)
+            )
+        return (
+            gr.update(visible=True),
+            gr.update(visible=False),
+            gr.update(visible=False)
+    )
     
     def show_test(status, user):
-            if user:
-                return (
-                    gr.update(visible=False),
-                    gr.update(visible=False),
-                    gr.update(visible=True)
-                )
+        if user:
+            return (
+                gr.update(visible=False),
+                gr.update(visible=False),
+                gr.update(visible=True)
+            )
+        return (
+             gr.update(visible=True),
+             gr.update(visible=False),
+             gr.update(visible=False)
+        )
+            
     
     login.login_btn.click(
         fn=show_login,
