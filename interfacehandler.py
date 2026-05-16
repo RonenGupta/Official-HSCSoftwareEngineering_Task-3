@@ -14,9 +14,7 @@ gm= GraphManager()
 
 class Train_Tab():
     def __init__(self, current_user):
-        
-        with gr.Tab("Train"):
-            gr.Markdown("# Training Demo")
+            gr.Markdown("### Train Models.")
             transform_options = [
                 "Resize(256, 256)",
                 "CenterCrop(224)",
@@ -52,7 +50,7 @@ class Train_Tab():
             fn=self.save_model,
             inputs=[self.current_user, self.save_model_name],
             outputs=[self.save_status])
-        
+            
     def train_pipeline(self, train_folder, epochs, lr, bs, layer4, selected_transforms):
         
         path = train_folder.name if hasattr(train_folder, "name") else train_folder
@@ -113,9 +111,7 @@ class Train_Tab():
 
 class Test_Tab():
     def __init__(self, current_user):
-        
-        with gr.Tab("Test"):
-            gr.Markdown("# Testing Demo")
+            gr.Markdown("### Test Models.")
             transform_options = [
                 "Resize(256, 256)",
                 "CenterCrop(224)",
@@ -210,31 +206,32 @@ class Test_Tab():
         return download_status
 class LoginSignUp():
     def __init__(self):    
-        self.current_user = gr.State(value=None)
+            self.current_user = gr.State(value=None)
+            gr.Markdown("### Login / Sign Up.")
+            with gr.Row(equal_height=True):
+                with gr.Column():
+                    gr.Markdown("Login / Sign Up")
+                    self.login_username = gr.Textbox(label="Username")
+                    self.login_password = gr.Textbox(label="Password")
+                    self.login_btn = gr.Button("Login")
+                    self.login_status = gr.Textbox(label="Status", interactive=False)
 
-        with gr.Tab("Login / Sign Up"):
-            gr.Markdown("Login / Sign Up")
-            self.login_username = gr.Textbox(label="Username")
-            self.login_password = gr.Textbox(label="Password")
-            self.login_btn = gr.Button("Login")
-            self.login_status = gr.Textbox(label="Status", interactive=False)
+                    self.login_btn.click(fn=self.login_pipeline,
+                                            inputs=[self.login_username, self.login_password],
+                                            outputs=[self.login_status, self.current_user]
+                                            )
+                with gr.Column():
+                    gr.Markdown("Sign Up")
+                    self.signup_username = gr.Textbox(label="Username")
+                    self.signup_password = gr.Textbox(label="Password")
+                    self.signup_btn = gr.Button("Create Account")
+                    self.signup_status = gr.Textbox(label="Status", interactive=False)
 
-            self.login_btn.click(fn=self.login_pipeline,
-                                 inputs=[self.login_username, self.login_password],
-                                 outputs=[self.login_status, self.current_user]
-                                 )
-            gr.Markdown("---")
-            gr.Markdown("Sign Up")
-            self.signup_username = gr.Textbox(label="Username")
-            self.signup_password = gr.Textbox(label="Password")
-            self.signup_btn = gr.Button("Create Account")
-            self.signup_status = gr.Textbox(label="Status", interactive=False)
-
-            self.signup_btn.click(
-                fn=self.signup_pipeline,
-                inputs=[self.signup_username, self.signup_password],
-                outputs=self.signup_status
-            )
+                    self.signup_btn.click(
+                        fn=self.signup_pipeline,
+                        inputs=[self.signup_username, self.signup_password],
+                        outputs=self.signup_status
+                    )
 
     @staticmethod
     def load_users():
