@@ -25,21 +25,34 @@ class Train_Tab():
             ]
 
             self.current_user = current_user
-            self.lr_input= gr.Slider(0.0001, 0.1, label="Learning Rate")
-            self.epoch_input = gr.Number(label="Epochs")
-            self.bs_input = gr.Number(label="Batch Size")
-            self.train_path_input = gr.Textbox(label="Training Folder Path", placeholder="/absolute/path/to/your/dataset")
-            self.train_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for training!")
-            self.layer4_input = gr.Checkbox(label="Use Layer4")
-            with gr.Row(equal_height=True):
-                with gr.Column():
-                    self.save_btn = gr.Button("Save Model")
-                    self.save_model_name = gr.Textbox(label="Saved Model Name", placeholder="model1")
-                    self.save_status = gr.Textbox(label="Save Status", interactive=False)
-            self.train_btn = gr.Button("Start Training")
-            with gr.Row(equal_height=True):
-                self.train_status = gr.Textbox(label="Status", interactive=False)
-                self.train_graph = gr.Plot(label="Loss Curve")
+            with gr.Group():
+                gr.Markdown("Dataset Input")
+                self.train_path_input = gr.Textbox(label="Training Folder Path", placeholder="/absolute/path/to/your/dataset")
+            with gr.Group():
+                gr.Markdown("Hyperparameters")
+                self.lr_input= gr.Slider(0.0001, 0.1, label="Learning Rate")
+                self.epoch_input = gr.Number(label="Epochs")
+                self.bs_input = gr.Number(label="Batch Size")
+            with gr.Group():
+                gr.Markdown("Transforms")
+                self.train_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for training!")
+            with gr.Group():
+                gr.Markdown("Architecture")
+                self.layer4_input = gr.Checkbox(label="Use Layer4")
+            
+            with gr.Group():
+                gr.Markdown("Training")
+                self.train_btn = gr.Button("Start Training")
+                with gr.Row(equal_height=True):
+                    self.train_status = gr.Textbox(label="Status", lines=3)
+                    self.train_graph = gr.Plot(label="Loss Curve")
+            with gr.Group():
+                gr.Markdown("Save Model")
+                with gr.Row(equal_height=True):
+                    with gr.Column():
+                        self.save_btn = gr.Button("Save Model")
+                        self.save_model_name = gr.Textbox(label="Saved Model Name", placeholder="model1")
+                        self.save_status = gr.Textbox(label="Save Status", interactive=False)
 
             self.train_btn.click(
             fn=self.train_pipeline,
@@ -121,37 +134,52 @@ class Test_Tab():
                 "Normalize"
             ]
             self.current_user = current_user
-            self.model = gr.Dropdown(choices=[], label="Select a saved model for testing!", interactive=True)
-            self.bs_input = gr.Number(label="Batch Size")
-            self.test_path_input = gr.Textbox(label="Testing Folder Path", placeholder="/absolute/path/to/your/dataset")
-            self.test_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for testing!")
-            self.layer4_input = gr.Checkbox(label="Use Layer4 (If you trained the model with layer 4, enable this)")
-            with gr.Column():
-                with gr.Row(equal_height=True):
-                        self.refresh_btn = gr.Button("Refresh Saved Models")
-                        self.refresh_btn.click(
-                            fn=self.get_user_models,
-                            inputs=[self.current_user],
-                            outputs=[self.model]
-                        )
-                        self.download_btn = gr.Button("Download selected model")
-            self.download_status = gr.Textbox(label="Download Status")
+            with gr.Group():
+                gr.Markdown("Model Selection")
+                self.model = gr.Dropdown(choices=[], label="Select a saved model for testing!", interactive=True)
+            with gr.Group():
+                gr.Markdown("Hyperparameters")
+                self.bs_input = gr.Number(label="Batch Size")
+            with gr.Group():
+                gr.Markdown("Testing Dataset")
+                self.test_path_input = gr.Textbox(label="Testing Folder Path", placeholder="/absolute/path/to/your/dataset")
+            with gr.Group():
+                gr.Markdown("Transforms")
+                self.test_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for testing!")
+            with gr.Group():
+                gr.Markdown("Architecture")
+                self.layer4_input = gr.Checkbox(label="Use Layer4 (If you trained the model with layer 4, enable this)")
+            
+            with gr.Group():
+                gr.Markdown("Refresh and Download")
+                with gr.Column():
+                    with gr.Row(equal_height=True):
+                            self.refresh_btn = gr.Button("Refresh Saved Models")
+                            self.refresh_btn.click(
+                                fn=self.get_user_models,
+                                inputs=[self.current_user],
+                                outputs=[self.model]
+                            )
+                            self.download_btn = gr.Button("Download selected model")
+                self.download_status = gr.Textbox(label="Download Status")
 
-            self.download_btn.click(
-                fn=self.download_user_models,
-                inputs=[self.current_user, self.model],
-                outputs=[self.download_status]
-            )
-            with gr.Column():
-                self.test_btn = gr.Button("Start Testing")
-                with gr.Row(equal_height=True):
-                    self.test_status = gr.Textbox(label="Status")
-                    self.test_graph = gr.Plot(label="Confusion Matrix")
+                self.download_btn.click(
+                    fn=self.download_user_models,
+                    inputs=[self.current_user, self.model],
+                    outputs=[self.download_status]
+                )
+            with gr.Group():
+                gr.Markdown("Testing")
+                with gr.Column():
+                    self.test_btn = gr.Button("Start Testing")
+                    with gr.Row(equal_height=True):
+                        self.test_status = gr.Textbox(label="Status")
+                        self.test_graph = gr.Plot(label="Confusion Matrix")
 
-            self.test_btn.click(
-            fn=self.test_pipeline,
-            inputs=[self.current_user, self.model, self.layer4_input, self.test_path_input, self.bs_input, self.test_transforms_input],
-            outputs=[self.test_status, self.test_graph])
+                self.test_btn.click(
+                fn=self.test_pipeline,
+                inputs=[self.current_user, self.model, self.layer4_input, self.test_path_input, self.bs_input, self.test_transforms_input],
+                outputs=[self.test_status, self.test_graph])
 
     def test_pipeline(self, username, model, layer4, test_folder, bs, selected_transforms):
 
@@ -211,8 +239,8 @@ class LoginSignUp():
     def __init__(self):    
             self.current_user = gr.State(value=None)
             gr.Markdown("### Login / Sign Up.")
-            with gr.Row(equal_height=True):
-                with gr.Column():
+            with gr.Row(equal_height=True, elem_classes="spaced-row"):
+                with gr.Group():
                     gr.Markdown("Login / Sign Up")
                     self.login_username = gr.Textbox(label="Username")
                     self.login_password = gr.Textbox(label="Password")
@@ -223,7 +251,7 @@ class LoginSignUp():
                                             inputs=[self.login_username, self.login_password],
                                             outputs=[self.login_status, self.current_user]
                                             )
-                with gr.Column():
+                with gr.Group():
                     gr.Markdown("Sign Up")
                     self.signup_username = gr.Textbox(label="Username")
                     self.signup_password = gr.Textbox(label="Password")

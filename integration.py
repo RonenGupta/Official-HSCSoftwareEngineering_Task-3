@@ -1,6 +1,20 @@
 from interfacehandler import Train_Tab, Test_Tab, LoginSignUp
 import gradio as gr
 
+css = """
+.spaced-row {
+    gap: 24px !important;
+}
+
+.gradio-container {
+    background: #e5e5e5 !important;   
+    min-height: 100vh !important;   
+    display: grid !important;
+    place-items: center !important;
+    padding: 20px !important;
+}
+"""
+
 with gr.Blocks(theme=gr.themes.Monochrome(), fill_height=True, fill_width=True) as demo:
 
     with gr.Group():
@@ -76,4 +90,4 @@ with gr.Blocks(theme=gr.themes.Monochrome(), fill_height=True, fill_width=True) 
             )
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(css=css)
