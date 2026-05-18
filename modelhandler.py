@@ -70,6 +70,7 @@ class ModelManager():
 
         EPOCHS = epochs
         losses = []
+        accuracies= []
         for epoch in range(EPOCHS):
             train_loss = 0
             train_acc = 0
@@ -97,9 +98,10 @@ class ModelManager():
             
             log += f"Epoch: {epoch + 1} || Train Loss: {avg_train_loss} || Train Accuracy {avg_train_acc}\n"
             losses.append(avg_train_loss)
+            accuracies.append(avg_train_acc)
             
-            yield log
-        return losses
+            yield log, losses, accuracies
+        return losses, accuracies
 
     def build(self, layer4: bool = False):
         """Model build process"""

@@ -14,6 +14,21 @@ class GraphManager():
         ax.set_xlabel("Epochs")
         ax.set_xticks(epochs)
         ax.legend();
+        plt.tight_layout()
+        plt.close(fig)
+        return fig
+    
+    def update_accuracy(self, accuracies, epochs):
+        fig, ax = plt.subplots()
+        epochs = list(range(1, epochs+1))
+        ax.plot(epochs, accuracies, label="Train accuracy")
+        ax.set_title("Training accuracy curve")
+        ax.set_ylabel("Accuracy")
+        ax.set_xlabel("Epochs")
+        ax.set_xticks(epochs)
+        ax.legend();
+        plt.tight_layout()
+        plt.close(fig)
         return fig
 
     def update_confusion_matrix(self, all_labels, all_preds, class_names):

@@ -44,8 +44,9 @@ class Train_Tab():
                 gr.Markdown("Training")
                 self.train_btn = gr.Button("Start Training")
                 with gr.Row(equal_height=True):
-                    self.train_status = gr.Textbox(label="Status", lines=3)
+                    self.train_status = gr.Textbox(label="Status", lines=10)
                     self.train_graph = gr.Plot(label="Loss Curve")
+                    self.acc_graph = gr.Plot(label="Accuracy Curve")
             with gr.Group():
                 gr.Markdown("Save Model")
                 with gr.Row(equal_height=True):
@@ -57,7 +58,7 @@ class Train_Tab():
             self.train_btn.click(
             fn=self.train_pipeline,
             inputs=[self.train_path_input, self.epoch_input, self.lr_input, self.bs_input, self.layer4_input, self.train_transforms_input],
-            outputs=[self.train_status, self.train_graph])
+            outputs=[self.train_status, self.train_graph, self.acc_graph])
 
             self.save_btn.click(
             fn=self.save_model,
@@ -104,15 +105,17 @@ class Train_Tab():
         gen =  mm.train(epochs, lr)
         try:
             while True:
-                log = next(gen)
-                yield log, None
+                log, losses, accuracies = next(gen)
+                fig = gm.update_loss(losses, len(losses))
+                acc_fig = gm.update_accuracy(accuracies, len(accuracies))
+                yield log, fig, acc_fig
         except StopIteration as e:
-            losses = e.value
+            losses, accuracies = e.value
             fig = gm.update_loss(losses, epochs)
+            acc_fig = gm.update_accuracy(accuracies, epochs)
+            yield log, fig, acc_fig
 
         self.trained_model = mm.model
-
-        yield log, fig
 
     def save_model(self, user, model_name):
         if not hasattr(self, "trained_model"):
