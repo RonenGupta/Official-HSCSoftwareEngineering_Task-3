@@ -326,3 +326,86 @@ class LoginSignUp():
             return "Incorrect password", None
         
         return f"Welcome {username}!", username
+
+class GradCAM():
+    def __init__(self, current_user):
+        gr.Markdown("### View GradCAMs.")
+        transform_options = [
+                "Resize(256, 256)",
+                "CenterCrop(224)",
+                "RandomResizedCrop(224)",
+                "RandomHorizontalFlip",
+                "ToTensor",
+                "Normalize"
+            ]
+        self.current_user = current_user
+        with gr.Group():
+            gr.Markdown("Image")
+            self.image = gr.Image(type="pil")
+        with gr.Group():
+            gr.Markdown("Model Selection")
+            self.model = gr.Dropdown(choices=[], label="Select a saved model for testing!", interactive=True)
+        with gr.Group():
+            gr.Markdown("Transforms")
+            self.transforms = gr.CheckboxGroup(choices=transform_options, label="Select transforms for testing!")
+
+        with gr.Group():
+            gr.Markdown("Refresh Models")
+            self.refresh_btn = gr.Button("Refresh Saved Models")
+        
+        with gr.Group():
+            gr.Markdown("GradCAM Results")
+            self.gcbutton = gr.Button("Generate GradCAM")
+            with gr.Row(equal_height=True):
+                self.GradCAM = gr.Image(type="numpy")
+                self.predclass = gr.Label()
+        
+        self.refresh_btn.click(
+            fn=self.get_user_models,
+            inputs=[self.current_user],
+            outputs=[self.model]
+        )
+        
+        self.gcbutton.click(
+            fn=self.update_gradcam,
+            inputs=[self.image, self.model, self.transforms],
+            outputs=[self.predclass, self.GradCAM]
+        )
+
+    def update_gradcam(self, image, model, selected_transforms):
+        final_transforms = []
+
+        if "Resize(256, 256)" in selected_transforms:
+            final_transforms.append(transforms.Resize((224, 224)))
+        
+        if "CenterCrop(224)" in selected_transforms:
+            final_transforms.append(transforms.CenterCrop(224))
+        
+        if "RandomResizedCrop(224)" in selected_transforms:
+            final_transforms.append(transforms.RandomResizedCrop(224, scale=(0.6, 1.0)))
+        
+        if "RandomHorizontalFlip" in selected_transforms:
+            final_transforms.append(transforms.RandomHorizontalFlip(0.5))
+
+        if "ToTensor" in selected_transforms:
+            final_transforms.append(transforms.ToTensor())
+        
+        if "Normalize" in selected_transforms:
+            final_transforms.append(transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                        std=[0.229, 0.224, 0.225]))
+            
+        if not final_transforms:
+            gradcam_transforms = None
+        else:
+            gradcam_transforms = transforms.Compose(final_transforms)
+
+        return mm.gradcam(image, model, transforms.Compose(gradcam_transforms))
+
+    def get_user_models(self, username):
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+        
+        model_names = list(users[username]["models"].keys())
+        return gr.update(choices=model_names, value=None)
+    
+            

@@ -8,6 +8,9 @@ import json
 import pickle
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from pathlib import Path
+from pytorch_grad_cam import GradCAM
+from pytorch_grad_cam.utils.image import show_cam_on_image
+from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 
 torch.manual_seed(42)
 
@@ -216,3 +219,28 @@ class ModelManager():
             pickle.dump(state_dict, f)
         
         return f"{model_name} successfully saved!"
+    
+    def gradcam(image, model, transforms):
+
+        rgb_img = np.float32(image) / 255
+        if transforms:
+            input_tensor = transforms(image).unsqueeze(0).to(device)
+        else:
+            default_test_transform = transforms.Compose([
+                                             transforms.Resize((224, 224)),
+                                             transforms.CenterCrop(224),
+                                             transforms.ToTensor(),
+                                             transforms.Normalize(mean=[0.485, 0.456, 0.406], 
+                                                                  std=[0.229, 0.224, 0.225])
+                                            ])
+            input_tensor = default_test_transform(image).unsqueeze(0).to(device)
+        output = model(input_tensor)
+        predicted_class = output.argmax().item()
+
+        cam = GradCAM(model=model, target_layers=[model.layer4[-1]])
+        targets = [ClassifierOutputTarget(predicted_class)]
+        grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]
+
+        cam_image = show_cam_on_image(rgb_img, grayscale_cam, use_rgb = True)
+
+        return predicted_class, cam_image
