@@ -220,27 +220,23 @@ class ModelManager():
         
         return f"{model_name} successfully saved!"
     
-    def gradcam(image, model, transforms):
+    def gradcam(self, username, image, model_name, layer4, num_classes):
 
-        rgb_img = np.float32(image) / 255
-        if transforms:
-            input_tensor = transforms(image).unsqueeze(0).to(device)
-        else:
-            default_test_transform = transforms.Compose([
-                                             transforms.Resize((224, 224)),
-                                             transforms.CenterCrop(224),
-                                             transforms.ToTensor(),
-                                             transforms.Normalize(mean=[0.485, 0.456, 0.406], 
-                                                                  std=[0.229, 0.224, 0.225])
-                                            ])
-            input_tensor = default_test_transform(image).unsqueeze(0).to(device)
-        output = model(input_tensor)
+        input_tensor = image.unsqueeze(0).to(device)
+        input_tensor.requires_grad_(True)
+
+        rgb_img = image.permute(1, 2, 0).cpu().numpy()
+        rgb_img = (rgb_img - rgb_img.min()) / (rgb_img.max() - rgb_img.min())
+        rgb_img = rgb_img.astype("float32")
+
+        loaded_model = self.load_model(username, model_name, layer4, num_classes)
+        output = loaded_model(input_tensor)
         predicted_class = output.argmax().item()
 
-        cam = GradCAM(model=model, target_layers=[model.layer4[-1]])
+        cam = GradCAM(model=loaded_model, target_layers=[loaded_model.layer4[-1]])
         targets = [ClassifierOutputTarget(predicted_class)]
         grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]
 
         cam_image = show_cam_on_image(rgb_img, grayscale_cam, use_rgb = True)
-
+    
         return predicted_class, cam_image

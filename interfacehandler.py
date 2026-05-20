@@ -6,6 +6,7 @@ from torchvision import transforms
 import bcrypt
 import os
 import json
+import random
 
 USER_DB = "users.json"
 
@@ -340,15 +341,22 @@ class GradCAM():
             ]
         self.current_user = current_user
         with gr.Group():
-            gr.Markdown("Image")
-            self.image = gr.Image(type="pil")
+                gr.Markdown("Image Dataset")
+                self.image_path_input = gr.Textbox(label="Image Folder Path", placeholder="/absolute/path/to/your/dataset")
         with gr.Group():
             gr.Markdown("Model Selection")
             self.model = gr.Dropdown(choices=[], label="Select a saved model for testing!", interactive=True)
         with gr.Group():
             gr.Markdown("Transforms")
             self.transforms = gr.CheckboxGroup(choices=transform_options, label="Select transforms for testing!")
-
+        
+        with gr.Group():
+            gr.Markdown("Hyperparameters")
+            self.bs_input = gr.Number(label="Batch Size")
+        with gr.Group():
+            gr.Markdown("Architecture")
+            self.layer4_input = gr.Checkbox(label="Use Layer4 (If you trained the model with layer 4, enable this)")
+        
         with gr.Group():
             gr.Markdown("Refresh Models")
             self.refresh_btn = gr.Button("Refresh Saved Models")
@@ -368,11 +376,11 @@ class GradCAM():
         
         self.gcbutton.click(
             fn=self.update_gradcam,
-            inputs=[self.image, self.model, self.transforms],
+            inputs=[self.current_user, self.image_path_input, self.model, self.transforms, self.layer4_input, self.bs_input],
             outputs=[self.predclass, self.GradCAM]
         )
 
-    def update_gradcam(self, image, model, selected_transforms):
+    def update_gradcam(self, username, dataset_path, model_name, selected_transforms, layer4, bs):
         final_transforms = []
 
         if "Resize(256, 256)" in selected_transforms:
@@ -393,14 +401,24 @@ class GradCAM():
         if "Normalize" in selected_transforms:
             final_transforms.append(transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                                         std=[0.229, 0.224, 0.225]))
-            
+   
         if not final_transforms:
             gradcam_transforms = None
         else:
             gradcam_transforms = transforms.Compose(final_transforms)
+        
+        gradcam_path = os.path.join(dataset_path, "test")
+        class_names = mm.test_transforms_dataset(gradcam_transforms, gradcam_path, bs)
+        num_classes = len(class_names)
 
-        return mm.gradcam(image, model, transforms.Compose(gradcam_transforms))
+        dataset = mm.test_dataset
+        index = random.randint(0, len(dataset) - 1) 
+        pil_image, _ = dataset[index]
 
+        predicted_class, cam_image = mm.gradcam(username, pil_image, model_name, layer4, num_classes)
+        predicted_label = class_names[predicted_class].capitalize()
+        return predicted_label, cam_image
+    
     def get_user_models(self, username):
         with open(USER_DB, "r") as f:
             users = json.load(f)

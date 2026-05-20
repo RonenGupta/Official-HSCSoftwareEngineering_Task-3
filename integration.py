@@ -26,6 +26,7 @@ with gr.Blocks(theme='harsh8001/skymist', fill_height=True, fill_width=True) as 
             test = Test_Tab(login.current_user)
         with gr.Group(visible=False) as gradcam_tab:
             gradcam = GradCAM(login.current_user)
+            
     def show_login(status, user):
             return (
                 gr.update(visible=True),
