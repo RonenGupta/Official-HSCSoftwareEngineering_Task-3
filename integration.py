@@ -7,15 +7,14 @@ css = """
 }
 
 .gradio-container {
-    background: #eef3ff !important;   
+    background: #d3d3d3 !important;   
     min-height: 100vh !important;   
     display: grid !important;
     place-items: center !important;
     padding: 20px !important;
 }
 """
-
-with gr.Blocks(theme='harsh8001/skymist', fill_height=True, fill_width=True) as demo:
+with gr.Blocks(fill_height=True, fill_width=True) as demo:
 
     with gr.Group():
         with gr.Group(visible=True) as login_tab:
@@ -119,4 +118,4 @@ with gr.Blocks(theme='harsh8001/skymist', fill_height=True, fill_width=True) as 
             )
 
 if __name__ == "__main__":
-    demo.launch(css=css)
+    demo.launch(css=css, theme=gr.themes.Monochrome())
