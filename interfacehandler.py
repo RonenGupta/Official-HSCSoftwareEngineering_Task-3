@@ -21,6 +21,10 @@ class Train_Tab():
                 "CenterCrop(224)",
                 "RandomResizedCrop(224)",
                 "RandomHorizontalFlip",
+                "RandomVerticalFlip",
+                "RandomRotation",
+                "ColorJitter",
+                "RandomAffine",
                 "ToTensor",
                 "Normalize"
             ]
@@ -79,10 +83,31 @@ class Train_Tab():
             final_transforms.append(transforms.CenterCrop(224))
         
         if "RandomResizedCrop(224)" in selected_transforms:
-            final_transforms.append(transforms.RandomResizedCrop(224, scale=(0.6, 1.0)))
+            final_transforms.append(transforms.RandomResizedCrop(224, 
+                                                                scale=(0.6, 1.0)))
         
         if "RandomHorizontalFlip" in selected_transforms:
             final_transforms.append(transforms.RandomHorizontalFlip(0.5))
+
+        if "RandomVerticalFlip" in selected_transforms:
+            final_transforms.append(transforms.RandomVerticalFlip(0.5))
+        
+        if "RandomRotation" in selected_transforms:
+            final_transforms.append(transforms.RandomRotation(360))
+
+        if "ColorJitter" in selected_transforms:
+            final_transforms.append(color_jitter = transforms.ColorJitter(brightness=0.5, 
+                                                                          contrast=0.5, 
+                                                                          saturation=0.5, 
+                                                                          hue=0.1
+                                                                          ))
+        if "RandomAffine" in selected_transforms:
+            final_transforms.append(transforms.RandomAffine(degrees=(-15, 15),     
+                                                            translate=(0.1, 0.1),  
+                                                            scale=(0.9, 1.1),      
+                                                            shear=(-5, 5),         
+                                                            fill=0                
+                                                            ))
 
         if "ToTensor" in selected_transforms:
             final_transforms.append(transforms.ToTensor())
@@ -134,6 +159,10 @@ class Test_Tab():
                 "CenterCrop(224)",
                 "RandomResizedCrop(224)",
                 "RandomHorizontalFlip",
+                "RandomVerticalFlip",
+                "RandomRotation",
+                "ColorJitter",
+                "RandomAffine",
                 "ToTensor",
                 "Normalize"
             ]
@@ -202,6 +231,28 @@ class Test_Tab():
         
         if "RandomHorizontalFlip" in selected_transforms:
             final_transforms.append(transforms.RandomHorizontalFlip(0.5))
+        
+        if "RandomVerticalFlip" in selected_transforms:
+            final_transforms.append(transforms.RandomVerticalFlip(0.5))
+
+        if "RandomRotation" in selected_transforms:
+            final_transforms.append(transforms.RandomRotation(360))
+        
+        if "ColorJitter" in selected_transforms:
+            final_transforms.append(transforms.ColorJitter(
+                                                            brightness=0.5, 
+                                                            contrast=0.5, 
+                                                            saturation=0.5, 
+                                                            hue=0.1
+                                                          ))
+        
+        if "RandomAffine" in selected_transforms:
+            final_transforms.append(transforms.RandomAffine(degrees=(-15, 15),     
+                                                            translate=(0.1, 0.1),  
+                                                            scale=(0.9, 1.1),      
+                                                            shear=(-5, 5),         
+                                                            fill=0                
+                                                            ))
 
         if "ToTensor" in selected_transforms:
             final_transforms.append(transforms.ToTensor())
@@ -336,6 +387,10 @@ class GradCAM():
                 "CenterCrop(224)",
                 "RandomResizedCrop(224)",
                 "RandomHorizontalFlip",
+                "RandomVerticalFlip",
+                "RandomRotation",
+                "ColorJitter",
+                "RandomAffine",
                 "ToTensor",
                 "Normalize"
             ]
@@ -360,6 +415,11 @@ class GradCAM():
         with gr.Group():
             gr.Markdown("Refresh Models")
             self.refresh_btn = gr.Button("Refresh Saved Models")
+
+        with gr.Group():
+            gr.Markdown("View Augmentations")
+            self.augbutton = gr.Button("View Augmentation Examples")
+            self.augmentation = gr.Image(type="numpy")
         
         with gr.Group():
             gr.Markdown("GradCAM Results")
@@ -367,7 +427,7 @@ class GradCAM():
             with gr.Row(equal_height=True):
                 self.GradCAM = gr.Image(type="numpy")
                 self.predclass = gr.Label()
-        
+
         self.refresh_btn.click(
             fn=self.get_user_models,
             inputs=[self.current_user],
@@ -378,6 +438,12 @@ class GradCAM():
             fn=self.update_gradcam,
             inputs=[self.current_user, self.image_path_input, self.model, self.transforms, self.layer4_input, self.bs_input],
             outputs=[self.predclass, self.GradCAM]
+        )
+
+        self.augbutton.click(
+            fn=self.update_augmentations,
+            inputs=[self.image_path_input, self.transforms, self.bs_input],
+            outputs=[self.augmentation]
         )
 
     def update_gradcam(self, username, dataset_path, model_name, selected_transforms, layer4, bs):
@@ -394,6 +460,27 @@ class GradCAM():
         
         if "RandomHorizontalFlip" in selected_transforms:
             final_transforms.append(transforms.RandomHorizontalFlip(0.5))
+
+        if "RandomVerticalFlip" in selected_transforms:
+            final_transforms.append(transforms.RandomVerticalFlip(0.5))
+
+        if "RandomRotation" in selected_transforms:
+            final_transforms.append(transforms.RandomRotation(360))
+
+        if "ColorJitter" in selected_transforms:
+            final_transforms.append(transforms.ColorJitter(
+                                                        brightness=0.5, 
+                                                        contrast=0.5, 
+                                                        saturation=0.5, 
+                                                        hue=0.1
+                                                        ))
+        if "RandomAffine" in selected_transforms:
+            final_transforms.append(transforms.RandomAffine(degrees=(-15, 15),     
+                                                                translate=(0.1, 0.1),  
+                                                                scale=(0.9, 1.1),      
+                                                                shear=(-5, 5),         
+                                                                fill=0                
+                                                                ))
 
         if "ToTensor" in selected_transforms:
             final_transforms.append(transforms.ToTensor())
@@ -419,6 +506,56 @@ class GradCAM():
         predicted_label = class_names[predicted_class].capitalize()
         return predicted_label, cam_image
     
+    def update_augmentations(self, augmentation_path, selected_transforms, bs):
+        aug_transforms = []
+
+        if "Resize(256, 256)" in selected_transforms:
+            aug_transforms.append(transforms.Resize((224, 224)))
+        
+        if "CenterCrop(224)" in selected_transforms:
+            aug_transforms.append(transforms.CenterCrop(224))
+        
+        if "RandomResizedCrop(224)" in selected_transforms:
+            aug_transforms.append(transforms.RandomResizedCrop(224, scale=(0.6, 1.0)))
+        
+        if "RandomHorizontalFlip" in selected_transforms:
+            aug_transforms.append(transforms.RandomHorizontalFlip(0.5))
+
+        if "RandomVerticalFlip" in selected_transforms:
+            aug_transforms.append(transforms.RandomVerticalFlip(0.5))
+        
+        if "RandomRotation" in selected_transforms:
+            aug_transforms.append(transforms.RandomRotation(360))
+        
+        if "ColorJitter" in selected_transforms:
+            aug_transforms.append(transforms.ColorJitter(
+                                                        brightness=0.5, 
+                                                        contrast=0.5, 
+                                                        saturation=0.5, 
+                                                        hue=0.1
+                                                        ))
+        
+        if "RandomAffine" in selected_transforms:
+            aug_transforms.append(transforms.RandomAffine(degrees=(-15, 15),     
+                                                                translate=(0.1, 0.1),  
+                                                                scale=(0.9, 1.1),      
+                                                                shear=(-5, 5),         
+                                                                fill=0                
+                                                                ))
+        if not aug_transforms:
+            return f"No augmentation transforms supplied, at least one must be supplied."
+        else:
+            augmented_transforms = transforms.Compose(aug_transforms)
+
+        augmentation_path = os.path.join(augmentation_path, "test")
+        mm.test_transforms_dataset(augmented_transforms, augmentation_path, bs)
+
+        dataset = mm.test_dataset
+        index = random.randint(0, len(dataset) - 1) 
+        pil_image, _ = dataset[index]
+
+        return pil_image
+    
     def get_user_models(self, username):
         with open(USER_DB, "r") as f:
             users = json.load(f)
@@ -426,4 +563,5 @@ class GradCAM():
         model_names = list(users[username]["models"].keys())
         return gr.update(choices=model_names, value=None)
     
-            
+    
+    
