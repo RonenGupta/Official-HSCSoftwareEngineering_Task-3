@@ -563,5 +563,30 @@ class GradCAM():
         model_names = list(users[username]["models"].keys())
         return gr.update(choices=model_names, value=None)
     
-    
-    
+class Settings():
+    def __init__(self):
+        gr.Markdown("Configure Settings")
+
+        with gr.Group():
+            gr.Markdown("Brightness")
+        
+        with gr.Group():
+            gr.Markdown("Text Size")
+
+        with gr.Group():
+            gr.Markdown("Music Player")
+
+            self.audio_file = gr.Audio(
+                type="filepath", 
+                label="Upload & Play Music", 
+                interactive=True
+            )
+        
+        with gr.Group():
+            gr.Markdown("Log Out")
+
+    def play_music(self, file):
+        return file
+
+
+        
