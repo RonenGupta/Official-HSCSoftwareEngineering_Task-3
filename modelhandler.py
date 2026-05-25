@@ -53,7 +53,6 @@ class ModelManager():
 
             avg_test_loss = test_loss / len(self.test_dataloader)
             avg_test_acc = test_acc / len(self.test_dataloader)
-
             test_metrics = f"Test Loss: {avg_test_loss} || Test Accuracy: {avg_test_acc}\n Test Precision: {precision_score(all_labels, all_preds, average='macro')}\nTest Recall: {recall_score(all_labels, all_preds, average='macro')}\nTest F1-Score: {f1_score(all_labels, all_preds, average='macro')}"
 
         return test_metrics, all_labels, all_preds

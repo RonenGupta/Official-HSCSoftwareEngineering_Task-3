@@ -118,7 +118,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             train_button = gr.Button("Train Tab")
             test_button = gr.Button("Test Tab")
             gradcam_button = gr.Button("GradCAM Tab")
-            settings_button = gr.Button("Settings Tab")
+            settings_button = gr.Button("Settings Tab", variant="secondary")
 
             login_button.click(
                 fn=show_login,
@@ -151,4 +151,4 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             )
 
 if __name__ == "__main__":
-    demo.launch(css=css, theme=gr.themes.Citrus())
+    demo.launch(css=css, theme=gr.themes.Citrus(), footer_links=["settings"])

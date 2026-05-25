@@ -140,6 +140,7 @@ class Train_Tab():
             fig = gm.update_loss(losses, epochs)
             acc_fig = gm.update_accuracy(accuracies, epochs)
             yield log, fig, acc_fig
+            gr.Info("Training completed successfully!", duration=8)
 
         self.trained_model = mm.model
 
@@ -149,6 +150,7 @@ class Train_Tab():
         
         if not model_name:
             return "Must pass model name"
+        gr.Info("Saving completed successfully!", duration=8)
         return mm.save_model(self.trained_model, user, model_name)
 
 class Test_Tab():
@@ -277,6 +279,7 @@ class Test_Tab():
         
         test_metrics, all_labels, all_preds =  mm.test(loaded_model)
         fig = gm.update_confusion_matrix(all_labels, all_preds, class_names)
+        gr.Info("Testing completed successfully!", duration=8)
 
         return test_metrics, fig
     
@@ -289,6 +292,7 @@ class Test_Tab():
     
     def download_user_models(self, username, model):
         download_status = mm.download_model(username, model)
+        gr.Info("Downloading completed successfully!", duration=8)
         return download_status
 class LoginSignUp():
     def __init__(self):    
@@ -360,6 +364,7 @@ class LoginSignUp():
         if username in users:
             return "Username already exists"
         
+        gr.Info("Sign Up completed successfully!", duration=8)
         users[username] = {
             "password": self.hash_password(password),
             "models": {}
@@ -377,6 +382,7 @@ class LoginSignUp():
         if not self.check_password(password, users[username]["password"]):
             return "Incorrect password", None
         
+        gr.Info("Log In completed successfully!", duration=8)
         return f"Welcome {username}!", username
 
 class GradCAM():
@@ -488,7 +494,10 @@ class GradCAM():
         if "Normalize" in selected_transforms:
             final_transforms.append(transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                                         std=[0.229, 0.224, 0.225]))
-   
+
+        if transforms.ToTensor() not in final_transforms:
+            final_transforms.append(transforms.ToTensor())
+            
         if not final_transforms:
             gradcam_transforms = None
         else:
@@ -504,6 +513,7 @@ class GradCAM():
 
         predicted_class, cam_image = mm.gradcam(username, pil_image, model_name, layer4, num_classes)
         predicted_label = class_names[predicted_class].capitalize()
+        gr.Info("GradCAM computation completed successfully!", duration=8)
         return predicted_label, cam_image
     
     def update_augmentations(self, augmentation_path, selected_transforms, bs):
@@ -553,6 +563,7 @@ class GradCAM():
         dataset = mm.test_dataset
         index = random.randint(0, len(dataset) - 1) 
         pil_image, _ = dataset[index]
+        gr.Info("Augmentated image computed successfully!", duration=8)
 
         return pil_image
     
@@ -565,11 +576,9 @@ class GradCAM():
     
 class Settings():
     def __init__(self):
-        gr.Markdown("Configure Settings")
+        gr.Markdown("# Configure Settings")
 
-        with gr.Group():
-            gr.Markdown("Brightness")
-        
+
         with gr.Group():
             gr.Markdown("Text Size")
 
@@ -581,12 +590,15 @@ class Settings():
                 label="Upload & Play Music", 
                 interactive=True
             )
-        
+                
         with gr.Group():
             gr.Markdown("Log Out")
 
-    def play_music(self, file):
-        return file
+        with gr.Group():
+            gr.Markdown("Close App")
 
+   
+
+                    
 
         
