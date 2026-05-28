@@ -43,7 +43,11 @@ class Train_Tab():
                 self.train_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for training!")
             with gr.Group():
                 gr.Markdown("Architecture")
-                self.layer4_input = gr.Checkbox(label="Use Layer4")
+                with gr.Row():
+                    self.layer1_input = gr.Checkbox(label="Use Layer1")
+                    self.layer2_input = gr.Checkbox(label="Use Layer2")
+                    self.layer3_input = gr.Checkbox(label="Use Layer3")
+                    self.layer4_input = gr.Checkbox(label="Use Layer4")
             
             with gr.Group():
                 gr.Markdown("Training")
@@ -62,7 +66,7 @@ class Train_Tab():
 
             self.train_btn.click(
             fn=self.train_pipeline,
-            inputs=[self.train_path_input, self.epoch_input, self.lr_input, self.bs_input, self.layer4_input, self.train_transforms_input],
+            inputs=[self.train_path_input, self.epoch_input, self.lr_input, self.bs_input, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.train_transforms_input],
             outputs=[self.train_status, self.train_graph, self.acc_graph])
 
             self.save_btn.click(
@@ -70,7 +74,7 @@ class Train_Tab():
             inputs=[self.current_user, self.save_model_name],
             outputs=[self.save_status])
             
-    def train_pipeline(self, train_folder, epochs, lr, bs, layer4, selected_transforms):
+    def train_pipeline(self, train_folder, epochs, lr, bs, layer1, layer2, layer3, layer4, selected_transforms):
         
         path = train_folder.name if hasattr(train_folder, "name") else train_folder
 
@@ -96,11 +100,11 @@ class Train_Tab():
             final_transforms.append(transforms.RandomRotation(360))
 
         if "ColorJitter" in selected_transforms:
-            final_transforms.append(color_jitter = transforms.ColorJitter(brightness=0.5, 
-                                                                          contrast=0.5, 
-                                                                          saturation=0.5, 
-                                                                          hue=0.1
-                                                                          ))
+            final_transforms.append(transforms.ColorJitter(brightness=0.5, 
+                                                           contrast=0.5, 
+                                                           saturation=0.5, 
+                                                           hue=0.1
+                                                          ))
         if "RandomAffine" in selected_transforms:
             final_transforms.append(transforms.RandomAffine(degrees=(-15, 15),     
                                                             translate=(0.1, 0.1),  
@@ -126,7 +130,7 @@ class Train_Tab():
         
         train_path = os.path.join(path, "train")
         mm.train_transforms_dataset(train_transforms, train_path, bs)
-        mm.build(layer4)
+        mm.build(layer1, layer2, layer3, layer4)
 
         gen =  mm.train(epochs, lr)
         try:
@@ -156,18 +160,6 @@ class Train_Tab():
 class Test_Tab():
     def __init__(self, current_user):
             gr.Markdown("### Test Models.")
-            transform_options = [
-                "Resize(256, 256)",
-                "CenterCrop(224)",
-                "RandomResizedCrop(224)",
-                "RandomHorizontalFlip",
-                "RandomVerticalFlip",
-                "RandomRotation",
-                "ColorJitter",
-                "RandomAffine",
-                "ToTensor",
-                "Normalize"
-            ]
             self.current_user = current_user
             with gr.Group():
                 gr.Markdown("Model Selection")
@@ -179,11 +171,12 @@ class Test_Tab():
                 gr.Markdown("Testing Dataset")
                 self.test_path_input = gr.Textbox(label="Testing Folder Path", placeholder="/absolute/path/to/your/dataset")
             with gr.Group():
-                gr.Markdown("Transforms")
-                self.test_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for testing!")
-            with gr.Group():
                 gr.Markdown("Architecture")
-                self.layer4_input = gr.Checkbox(label="Use Layer4 (If you trained the model with layer 4, enable this)")
+                with gr.Row():
+                    self.layer1_input = gr.Checkbox(label="Use Layer1")
+                    self.layer2_input = gr.Checkbox(label="Use Layer2")
+                    self.layer3_input = gr.Checkbox(label="Use Layer3")
+                    self.layer4_input = gr.Checkbox(label="Use Layer4")
             
             with gr.Group():
                 gr.Markdown("Refresh and Download")
@@ -213,69 +206,21 @@ class Test_Tab():
 
                 self.test_btn.click(
                 fn=self.test_pipeline,
-                inputs=[self.current_user, self.model, self.layer4_input, self.test_path_input, self.bs_input, self.test_transforms_input],
+                inputs=[self.current_user, self.model, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.test_path_input, self.bs_input],
                 outputs=[self.test_status, self.test_graph])
 
-    def test_pipeline(self, username, model, layer4, test_folder, bs, selected_transforms):
+    def test_pipeline(self, username, model, layer1, layer2, layer3, layer4, test_folder, bs):
 
         path = test_folder.name if hasattr(test_folder, "name") else test_folder
-
-        final_transforms = []
-
-        if "Resize(256, 256)" in selected_transforms:
-            final_transforms.append(transforms.Resize((224, 224)))
-        
-        if "CenterCrop(224)" in selected_transforms:
-            final_transforms.append(transforms.CenterCrop(224))
-        
-        if "RandomResizedCrop(224)" in selected_transforms:
-            final_transforms.append(transforms.RandomResizedCrop(224, scale=(0.6, 1.0)))
-        
-        if "RandomHorizontalFlip" in selected_transforms:
-            final_transforms.append(transforms.RandomHorizontalFlip(0.5))
-        
-        if "RandomVerticalFlip" in selected_transforms:
-            final_transforms.append(transforms.RandomVerticalFlip(0.5))
-
-        if "RandomRotation" in selected_transforms:
-            final_transforms.append(transforms.RandomRotation(360))
-        
-        if "ColorJitter" in selected_transforms:
-            final_transforms.append(transforms.ColorJitter(
-                                                            brightness=0.5, 
-                                                            contrast=0.5, 
-                                                            saturation=0.5, 
-                                                            hue=0.1
-                                                          ))
-        
-        if "RandomAffine" in selected_transforms:
-            final_transforms.append(transforms.RandomAffine(degrees=(-15, 15),     
-                                                            translate=(0.1, 0.1),  
-                                                            scale=(0.9, 1.1),      
-                                                            shear=(-5, 5),         
-                                                            fill=0                
-                                                            ))
-
-        if "ToTensor" in selected_transforms:
-            final_transforms.append(transforms.ToTensor())
-        
-        if "Normalize" in selected_transforms:
-            final_transforms.append(transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                        std=[0.229, 0.224, 0.225]))
-            
-        if not final_transforms:
-            test_transforms = None
-        else:
-            test_transforms = transforms.Compose(final_transforms)
         
         if not SecurityManager(path).validate_path():
             return "Invalid training folder", None
         
         test_path = os.path.join(path, "test")
-        class_names = mm.test_transforms_dataset(test_transforms, test_path, bs)
+        class_names = mm.test_transforms_dataset(None, test_path, bs)
         
         num_classes = len(class_names)
-        loaded_model = mm.load_model(username, model, layer4, num_classes)
+        loaded_model = mm.load_model(username, model, layer1, layer2, layer3, layer4, num_classes)
         
         test_metrics, all_labels, all_preds =  mm.test(loaded_model)
         fig = gm.update_confusion_matrix(all_labels, all_preds, class_names)
@@ -294,6 +239,7 @@ class Test_Tab():
         download_status = mm.download_model(username, model)
         gr.Info("Downloading completed successfully!", duration=8)
         return download_status
+    
 class LoginSignUp():
     def __init__(self):    
             self.current_user = gr.State(value=None)
@@ -409,14 +355,18 @@ class GradCAM():
             self.model = gr.Dropdown(choices=[], label="Select a saved model for testing!", interactive=True)
         with gr.Group():
             gr.Markdown("Transforms")
-            self.transforms = gr.CheckboxGroup(choices=transform_options, label="Select transforms for testing!")
+            self.transforms = gr.CheckboxGroup(choices=transform_options, label="Select transforms for testing augmentations!")
         
         with gr.Group():
             gr.Markdown("Hyperparameters")
             self.bs_input = gr.Number(label="Batch Size")
         with gr.Group():
             gr.Markdown("Architecture")
-            self.layer4_input = gr.Checkbox(label="Use Layer4 (If you trained the model with layer 4, enable this)")
+            with gr.Row():
+                self.layer1_input = gr.Checkbox(label="Use Layer1")
+                self.layer2_input = gr.Checkbox(label="Use Layer2")
+                self.layer3_input = gr.Checkbox(label="Use Layer3")
+                self.layer4_input = gr.Checkbox(label="Use Layer4")
         
         with gr.Group():
             gr.Markdown("Refresh Models")
@@ -425,13 +375,14 @@ class GradCAM():
         with gr.Group():
             gr.Markdown("View Augmentations")
             self.augbutton = gr.Button("View Augmentation Examples")
-            self.augmentation = gr.Image(type="numpy")
+            self.augmentation = gr.Image(type="numpy", buttons=["download"])
         
         with gr.Group():
             gr.Markdown("GradCAM Results")
             self.gcbutton = gr.Button("Generate GradCAM")
             with gr.Row(equal_height=True):
-                self.GradCAM = gr.Image(type="numpy")
+                self.originimage = gr.Image(type="numpy", label="Original Image", buttons=["download"], container=False)
+                self.gradimage = gr.Image(type="numpy", label="GradCAM Image", buttons=["download"], container=False)
                 self.predclass = gr.Label()
 
         self.refresh_btn.click(
@@ -442,8 +393,8 @@ class GradCAM():
         
         self.gcbutton.click(
             fn=self.update_gradcam,
-            inputs=[self.current_user, self.image_path_input, self.model, self.transforms, self.layer4_input, self.bs_input],
-            outputs=[self.predclass, self.GradCAM]
+            inputs=[self.current_user, self.image_path_input, self.model, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.bs_input],
+            outputs=[self.predclass, self.originimage, self.gradimage]
         )
 
         self.augbutton.click(
@@ -452,69 +403,20 @@ class GradCAM():
             outputs=[self.augmentation]
         )
 
-    def update_gradcam(self, username, dataset_path, model_name, selected_transforms, layer4, bs):
-        final_transforms = []
-
-        if "Resize(256, 256)" in selected_transforms:
-            final_transforms.append(transforms.Resize((224, 224)))
-        
-        if "CenterCrop(224)" in selected_transforms:
-            final_transforms.append(transforms.CenterCrop(224))
-        
-        if "RandomResizedCrop(224)" in selected_transforms:
-            final_transforms.append(transforms.RandomResizedCrop(224, scale=(0.6, 1.0)))
-        
-        if "RandomHorizontalFlip" in selected_transforms:
-            final_transforms.append(transforms.RandomHorizontalFlip(0.5))
-
-        if "RandomVerticalFlip" in selected_transforms:
-            final_transforms.append(transforms.RandomVerticalFlip(0.5))
-
-        if "RandomRotation" in selected_transforms:
-            final_transforms.append(transforms.RandomRotation(360))
-
-        if "ColorJitter" in selected_transforms:
-            final_transforms.append(transforms.ColorJitter(
-                                                        brightness=0.5, 
-                                                        contrast=0.5, 
-                                                        saturation=0.5, 
-                                                        hue=0.1
-                                                        ))
-        if "RandomAffine" in selected_transforms:
-            final_transforms.append(transforms.RandomAffine(degrees=(-15, 15),     
-                                                                translate=(0.1, 0.1),  
-                                                                scale=(0.9, 1.1),      
-                                                                shear=(-5, 5),         
-                                                                fill=0                
-                                                                ))
-
-        if "ToTensor" in selected_transforms:
-            final_transforms.append(transforms.ToTensor())
-        
-        if "Normalize" in selected_transforms:
-            final_transforms.append(transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                        std=[0.229, 0.224, 0.225]))
-
-        if transforms.ToTensor() not in final_transforms:
-            final_transforms.append(transforms.ToTensor())
-            
-        if not final_transforms:
-            gradcam_transforms = None
-        else:
-            gradcam_transforms = transforms.Compose(final_transforms)
+    def update_gradcam(self, username, dataset_path, model_name, layer1, layer2, layer3, layer4, bs):
         
         gradcam_path = os.path.join(dataset_path, "test")
-        class_names = mm.test_transforms_dataset(gradcam_transforms, gradcam_path, bs)
+        class_names = mm.test_transforms_dataset(None, gradcam_path, bs)
         num_classes = len(class_names)
 
         dataset = mm.test_dataset
         index = random.randint(0, len(dataset) - 1) 
         pil_image, _ = dataset[index]
 
-        predicted_class, cam_image = mm.gradcam(username, pil_image, model_name, layer4, num_classes)
+        predicted_class, originimage, cam_image = mm.gradcam(username, pil_image, model_name, layer1, layer2, layer3, layer4, num_classes)
         predicted_label = class_names[predicted_class].capitalize()
         gr.Info("GradCAM computation completed successfully!", duration=8)
-        return predicted_label, cam_image
+        return predicted_label, originimage, cam_image
     
     def update_augmentations(self, augmentation_path, selected_transforms, bs):
         aug_transforms = []
@@ -578,10 +480,6 @@ class Settings():
     def __init__(self):
         gr.Markdown("# Configure Settings")
 
-
-        with gr.Group():
-            gr.Markdown("Text Size")
-
         with gr.Group():
             gr.Markdown("Music Player")
 
@@ -590,6 +488,9 @@ class Settings():
                 label="Upload & Play Music", 
                 interactive=True
             )
+        
+        with gr.Group():
+            gr.Markdown("Notifications")
                 
         with gr.Group():
             gr.Markdown("Log Out")

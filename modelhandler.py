@@ -105,7 +105,7 @@ class ModelManager():
             yield log, losses, accuracies
         return losses, accuracies
 
-    def build(self, layer4: bool = False):
+    def build(self, layer1: bool = False, layer2: bool = False, layer3: bool = False, layer4: bool = False):
         """Model build process"""
         self.model = torchvision.models.resnet18(weights=ResNet18_Weights.DEFAULT).to(device)
         self.model.fc = torch.nn.Sequential(
@@ -119,10 +119,19 @@ class ModelManager():
 
         for param in self.model.fc.parameters():
             param.requires_grad = True
-        
-        if layer4:
-            for param in self.model.layer4.parameters():
-                param.requires_grad = True
+
+        layer_map = {
+            layer1: "layer1",
+            layer2: "layer2",
+            layer3: "layer3",
+            layer4: "layer4"
+        }
+
+        for name, key in layer_map.items():
+            if name:
+                layer = getattr(self.model, key)
+                for param in layer.parameters():
+                    param.requires_grad = True
     
     def test_transforms_dataset(self, test_transforms: transforms.Compose | None, test_path: str, test_bs: int = 32):
         """Setup dataloader for testing data"""
@@ -185,7 +194,7 @@ class ModelManager():
 
         return f"Model '{model_name}' saved!"
 
-    def load_model(self, username, model_name, layer4, num_classes = 2):
+    def load_model(self, username, model_name, layer1, layer2, layer3, layer4, num_classes = 2):
         with open(USERS_JSON, 'r') as f:
             users = json.load(f)
         user_models = users[username].get("models", {})
@@ -198,9 +207,19 @@ class ModelManager():
         for param in self.model.parameters():
             param.requires_grad = False
 
-        if layer4:
-            for param in self.model.layer4.parameters():
-                param.requires_grad = True
+        layer_map = {
+            layer1: "layer1",
+            layer2: "layer2",
+            layer3: "layer3",
+            layer4: "layer4"
+        }
+
+        for name, key in layer_map.items():
+            if name:
+                layer = getattr(self.model, key)
+                for param in layer.parameters():
+                    param.requires_grad = True
+
         state_dict = torch.load(model_path, map_location=device)
         self.model.load_state_dict(state_dict)
         self.model.eval()
@@ -219,7 +238,7 @@ class ModelManager():
         
         return f"{model_name} successfully saved!"
     
-    def gradcam(self, username, image, model_name, layer4, num_classes):
+    def gradcam(self, username, image, model_name, layer1, layer2, layer3, layer4, num_classes):
 
         input_tensor = image.unsqueeze(0).to(device)
         input_tensor.requires_grad_(True)
@@ -228,7 +247,7 @@ class ModelManager():
         rgb_img = (rgb_img - rgb_img.min()) / (rgb_img.max() - rgb_img.min())
         rgb_img = rgb_img.astype("float32")
 
-        loaded_model = self.load_model(username, model_name, layer4, num_classes)
+        loaded_model = self.load_model(username, model_name, layer1, layer2, layer3, layer4, num_classes)
         output = loaded_model(input_tensor)
         predicted_class = output.argmax().item()
 
@@ -238,4 +257,4 @@ class ModelManager():
 
         cam_image = show_cam_on_image(rgb_img, grayscale_cam, use_rgb = True)
     
-        return predicted_class, cam_image
+        return predicted_class, rgb_img, cam_image
