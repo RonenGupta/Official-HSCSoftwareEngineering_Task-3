@@ -2,7 +2,7 @@ import torch
 import torchvision
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from torchvision.models import resnet18, ResNet18_Weights
+from torchvision.models import resnet18, ResNet18_Weights, resnet34, ResNet34_Weights, resnet50, ResNet50_Weights, resnet101, ResNet101_Weights, resnet152, ResNet152_Weights
 import numpy as np
 import json  
 import pickle
@@ -122,12 +122,20 @@ class ModelManager():
             yield log, losses, accuracies
         return losses, accuracies
 
-    def build(self, layer1: bool = False, layer2: bool = False, layer3: bool = False, layer4: bool = False):
+    def build(self, architecture: str = "ResNet18", layer1: bool = False, layer2: bool = False, layer3: bool = False, layer4: bool = False):
         """Model build process"""
-        self.model = torchvision.models.resnet18(weights=ResNet18_Weights.DEFAULT).to(device)
+        resnet_models = {
+            "ResNet18": (torchvision.models.resnet18, 512),
+            "ResNet34": (torchvision.models.resnet34, 512),
+            "ResNet50": (torchvision.models.resnet50, 2048),
+            "ResNet101": (torchvision.models.resnet101, 2048),
+            "ResNet152": (torchvision.models.resnet152, 2048),
+        }
+        model_arch, in_features = resnet_models[architecture]
+        self.model = model_arch(weights="DEFAULT").to(device)
         self.model.fc = torch.nn.Sequential(
         torch.nn.Dropout(p=0.2, inplace=True),
-        torch.nn.Linear(in_features=512,
+        torch.nn.Linear(in_features=in_features,
                     out_features=len(self.train_dataset.classes),
                     bias=True)).to(device)
         

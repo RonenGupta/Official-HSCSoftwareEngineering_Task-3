@@ -29,6 +29,14 @@ class Train_Tab():
                 "Normalize"
             ]
 
+            architecture_options = [
+                "ResNet18",
+                "ResNet34",
+                "ResNet50",
+                "ResNet101",
+                "ResNet152"
+            ]
+
             self.current_user = current_user
             with gr.Group():
                 gr.Markdown("Dataset Input")
@@ -38,15 +46,16 @@ class Train_Tab():
                 self.lr_input= gr.Slider(0.0001, 0.1, label="Learning Rate")
                 self.epoch_input = gr.Number(label="Epochs")
                 self.bs_input = gr.Number(label="Batch Size")
-
-                with gr.Row():
-                    self.earlystopping_input = gr.Checkbox(label="Enable Early Stopping", value=False)
-                    self.patience_input = gr.Slider(0, 20, step=1, label="Patience (Epochs)")
+            with gr.Group():
+                gr.Markdown("Early Stopping")
+                self.earlystopping_input = gr.Checkbox(label="Enable Early Stopping", value=False)
+                self.patience_input = gr.Slider(0, 20, step=1, label="Patience (Epochs)")
             with gr.Group():
                 gr.Markdown("Transforms")
                 self.train_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for training!")
             with gr.Group():
                 gr.Markdown("Architecture")
+                self.archtype_input = gr.Dropdown(choices=architecture_options, label="Select preferred model architecture (The smaller the dataset, the smaller the architecture)")
                 with gr.Row():
                     self.layer1_input = gr.Checkbox(label="Use Layer1")
                     self.layer2_input = gr.Checkbox(label="Use Layer2")
@@ -70,7 +79,7 @@ class Train_Tab():
 
             self.train_btn.click(
             fn=self.train_pipeline,
-            inputs=[self.train_path_input, self.epoch_input, self.lr_input, self.bs_input, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.train_transforms_input, self.earlystopping_input, self.patience_input],
+            inputs=[self.train_path_input, self.epoch_input, self.lr_input, self.bs_input, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.train_transforms_input, self.earlystopping_input, self.patience_input, self.archtype_input],
             outputs=[self.train_status, self.train_graph, self.acc_graph])
 
             self.save_btn.click(
@@ -78,7 +87,7 @@ class Train_Tab():
             inputs=[self.current_user, self.save_model_name],
             outputs=[self.save_status])
             
-    def train_pipeline(self, train_folder, epochs, lr, bs, layer1, layer2, layer3, layer4, selected_transforms, earlystopping, patience):
+    def train_pipeline(self, train_folder, epochs, lr, bs, layer1, layer2, layer3, layer4, selected_transforms, earlystopping, patience, arch_type):
         
         path = train_folder.name if hasattr(train_folder, "name") else train_folder
 
@@ -134,7 +143,7 @@ class Train_Tab():
         
         train_path = os.path.join(path, "train")
         mm.train_transforms_dataset(train_transforms, train_path, bs)
-        mm.build(layer1, layer2, layer3, layer4)
+        mm.build(arch_type, layer1, layer2, layer3, layer4)
 
         gen =  mm.train(earlystopping, patience, epochs, lr)
         try:
