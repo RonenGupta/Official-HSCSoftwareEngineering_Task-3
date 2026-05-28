@@ -57,7 +57,7 @@ class ModelManager():
 
         return test_metrics, all_labels, all_preds
 
-    def train(self, epochs: int, lr: float = 0.01):
+    def train(self, earlystopping, patience, epochs: int, lr: float = 0.01):
         """Training loop"""
         log = ""
         param_list = []
@@ -67,8 +67,10 @@ class ModelManager():
                 param_list.append(param)
 
         loss_fn = torch.nn.CrossEntropyLoss()
-
         optimizer = torch.optim.Adam(param_list, lr)
+
+        best_loss = float('inf')
+        early_stop_counter = 0
 
         EPOCHS = epochs
         losses = []
@@ -98,10 +100,25 @@ class ModelManager():
             avg_train_loss = train_loss / len(self.train_dataloader)
             avg_train_acc = train_acc / len(self.train_dataloader)
             
-            log += f"Epoch: {epoch + 1} || Train Loss: {avg_train_loss} || Train Accuracy {avg_train_acc}\n"
             losses.append(avg_train_loss)
             accuracies.append(avg_train_acc)
-            
+
+            log += f"Epoch: {epoch + 1} || Train Loss: {avg_train_loss} || Train Accuracy {avg_train_acc}\n"
+
+            if earlystopping:
+                if avg_train_loss < best_loss:
+                    best_loss = avg_train_loss
+                    early_stop_counter = 0
+                    log += "Best loss improved"
+                else:
+                    early_stop_counter += 1
+                    log += f"No improvement ({early_stop_counter/patience})"
+                    
+                    if early_stop_counter >= patience:
+                        log += f"\nEarly stopping triggered at epoch {epoch+1}!"
+                        break
+            log += "\n"
+
             yield log, losses, accuracies
         return losses, accuracies
 

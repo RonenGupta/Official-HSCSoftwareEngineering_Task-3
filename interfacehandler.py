@@ -38,6 +38,10 @@ class Train_Tab():
                 self.lr_input= gr.Slider(0.0001, 0.1, label="Learning Rate")
                 self.epoch_input = gr.Number(label="Epochs")
                 self.bs_input = gr.Number(label="Batch Size")
+
+                with gr.Row():
+                    self.earlystopping_input = gr.Checkbox(label="Enable Early Stopping", value=False)
+                    self.patience_input = gr.Slider(0, 20, step=1, label="Patience (Epochs)")
             with gr.Group():
                 gr.Markdown("Transforms")
                 self.train_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for training!")
@@ -66,7 +70,7 @@ class Train_Tab():
 
             self.train_btn.click(
             fn=self.train_pipeline,
-            inputs=[self.train_path_input, self.epoch_input, self.lr_input, self.bs_input, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.train_transforms_input],
+            inputs=[self.train_path_input, self.epoch_input, self.lr_input, self.bs_input, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.train_transforms_input, self.earlystopping_input, self.patience_input],
             outputs=[self.train_status, self.train_graph, self.acc_graph])
 
             self.save_btn.click(
@@ -74,7 +78,7 @@ class Train_Tab():
             inputs=[self.current_user, self.save_model_name],
             outputs=[self.save_status])
             
-    def train_pipeline(self, train_folder, epochs, lr, bs, layer1, layer2, layer3, layer4, selected_transforms):
+    def train_pipeline(self, train_folder, epochs, lr, bs, layer1, layer2, layer3, layer4, selected_transforms, earlystopping, patience):
         
         path = train_folder.name if hasattr(train_folder, "name") else train_folder
 
@@ -132,7 +136,7 @@ class Train_Tab():
         mm.train_transforms_dataset(train_transforms, train_path, bs)
         mm.build(layer1, layer2, layer3, layer4)
 
-        gen =  mm.train(epochs, lr)
+        gen =  mm.train(earlystopping, patience, epochs, lr)
         try:
             while True:
                 log, losses, accuracies = next(gen)
