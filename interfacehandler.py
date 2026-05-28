@@ -7,8 +7,17 @@ import bcrypt
 import os
 import json
 import random
+import pygame
 
 USER_DB = "users.json"
+
+pygame.mixer.init()
+music_path = "/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/music/mbappe-yamal-tiki.mp3"
+pygame.mixer.music.load(music_path)
+
+NOTIFICATIONS_ENABLED = True
+SOUNDSENABLED = True
+CURRENTVOLUME = 0.5
 
 mm = ModelManager()
 gm= GraphManager()
@@ -157,7 +166,10 @@ class Train_Tab():
             fig = gm.update_loss(losses, epochs)
             acc_fig = gm.update_accuracy(accuracies, epochs)
             yield log, fig, acc_fig
-            gr.Info("Training completed successfully!", duration=8)
+            if NOTIFICATIONS_ENABLED:
+                gr.Info("Training completed successfully!", duration=8)
+            if SOUNDSENABLED:
+                pygame.mixer.music.play()
 
         self.trained_model = mm.model
 
@@ -167,7 +179,10 @@ class Train_Tab():
         
         if not model_name:
             return "Must pass model name"
-        gr.Info("Saving completed successfully!", duration=8)
+        if NOTIFICATIONS_ENABLED:
+            gr.Info("Saving completed successfully!", duration=8)
+        if SOUNDSENABLED:
+            pygame.mixer.music.play()
         return mm.save_model(self.trained_model, user, model_name)
 
 class Test_Tab():
@@ -237,7 +252,10 @@ class Test_Tab():
         
         test_metrics, all_labels, all_preds =  mm.test(loaded_model)
         fig = gm.update_confusion_matrix(all_labels, all_preds, class_names)
-        gr.Info("Testing completed successfully!", duration=8)
+        if NOTIFICATIONS_ENABLED:
+            gr.Info("Testing completed successfully!", duration=8)
+        if SOUNDSENABLED:
+            pygame.mixer.music.play()
 
         return test_metrics, fig
     
@@ -250,7 +268,10 @@ class Test_Tab():
     
     def download_user_models(self, username, model):
         download_status = mm.download_model(username, model)
-        gr.Info("Downloading completed successfully!", duration=8)
+        if NOTIFICATIONS_ENABLED:
+            gr.Info("Downloading completed successfully!", duration=8)
+        if SOUNDSENABLED:
+            pygame.mixer.music.play()
         return download_status
     
 class LoginSignUp():
@@ -322,12 +343,15 @@ class LoginSignUp():
 
         if username in users:
             return "Username already exists"
-        
-        gr.Info("Sign Up completed successfully!", duration=8)
-        users[username] = {
-            "password": self.hash_password(password),
-            "models": {}
-        }
+        if NOTIFICATIONS_ENABLED:
+            gr.Info("Sign Up completed successfully!", duration=8)
+            users[username] = {
+                "password": self.hash_password(password),
+                "models": {}
+            }
+        if SOUNDSENABLED:
+            pygame.mixer.music.play()
+
 
         self.save_users(users)
         return "Account created!"
@@ -341,7 +365,10 @@ class LoginSignUp():
         if not self.check_password(password, users[username]["password"]):
             return "Incorrect password", None
         
-        gr.Info("Log In completed successfully!", duration=8)
+        if NOTIFICATIONS_ENABLED:
+            gr.Info("Log In completed successfully!", duration=8)
+        if SOUNDSENABLED:
+            pygame.mixer.music.play()
         return f"Welcome {username}!", username
 
 class GradCAM():
@@ -428,7 +455,10 @@ class GradCAM():
 
         predicted_class, originimage, cam_image = mm.gradcam(username, pil_image, model_name, layer1, layer2, layer3, layer4, num_classes)
         predicted_label = class_names[predicted_class].capitalize()
-        gr.Info("GradCAM computation completed successfully!", duration=8)
+        if NOTIFICATIONS_ENABLED:
+            gr.Info("GradCAM computation completed successfully!", duration=8)
+        if SOUNDSENABLED:
+            pygame.mixer.music.play()
         return predicted_label, originimage, cam_image
     
     def update_augmentations(self, augmentation_path, selected_transforms, bs):
@@ -478,7 +508,10 @@ class GradCAM():
         dataset = mm.test_dataset
         index = random.randint(0, len(dataset) - 1) 
         pil_image, _ = dataset[index]
-        gr.Info("Augmentated image computed successfully!", duration=8)
+        if NOTIFICATIONS_ENABLED:
+            gr.Info("Augmentated image computed successfully!", duration=8)
+        if SOUNDSENABLED:
+            pygame.mixer.music.play()
 
         return pil_image
     
@@ -490,8 +523,10 @@ class GradCAM():
         return gr.update(choices=model_names, value=None)
     
 class Settings():
-    def __init__(self):
+    def __init__(self, current_user):
         gr.Markdown("# Configure Settings")
+
+        self.current_user = current_user
 
         with gr.Group():
             gr.Markdown("Music Player")
@@ -503,16 +538,59 @@ class Settings():
             )
         
         with gr.Group():
-            gr.Markdown("Notifications")
-                
-        with gr.Group():
-            gr.Markdown("Log Out")
+            gr.Markdown("Notifications and Sounds")
+            
+            self.notifications = gr.Checkbox(label="Enable Gradio Notifications", value=True, interactive=True)
+            self.sounds = gr.Checkbox(label="Enable Sound Effects", value=True, interactive=True)
+            self.volume_slider = gr.Slider(minimum=0, maximum=100, value=50, step=5, label="Sound Volume (%)", interactive=True)
 
         with gr.Group():
-            gr.Markdown("Close App")
+            gr.Markdown("Session")
+            self.logout_btn = gr.Button("Log Out")
+            self.close_btn = gr.Button("Close App")
+        
+        self.notifications.change(
+            fn=self.toggle_notifications,
+            inputs=[self.notifications],
+            outputs=None
+        )
 
-   
+        self.sounds.change(
+            fn=self.toggle_sounds,
+            inputs=[self.sounds],
+            outputs=None
+        )
 
+        self.volume_slider.change(
+            fn=self.update_volume,
+            inputs=[self.volume_slider],
+            outputs=None
+        )    
+
+        self.logout_btn.click(fn=self.logout)
+        self.close_btn.click(fn=self.close_app)
+        
+    def toggle_notifications(self, notifications: bool):
+        global NOTIFICATIONS_ENABLED
+        NOTIFICATIONS_ENABLED = notifications
+        return gr.Info(f"Notifications {'enabled' if notifications else 'disabled'}", duration=2)
+    
+    def toggle_sounds(self, sounds: bool):
+        global SOUNDSENABLED
+        SOUNDSENABLED = sounds
+        return gr.Info(f"Sound effects {'enabled' if SOUNDSENABLED else 'disabled'}", duration = 2)
+
+    def update_volume(self, volume: float):
+        global CURRENTVOLUME
+        CURRENTVOLUME = volume / 100.0
+        if pygame.mixer.get_init():
+            pygame.mixer.music.set_volume(CURRENTVOLUME)
+
+    def logout(self):
+        gr.Info(f"Logging out of {self.current_user}...", duration=3)
+
+    def close_app(self):
+        gr.Info(f"Closing application...", duration=3)
                     
 
         

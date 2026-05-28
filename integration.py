@@ -39,7 +39,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         with gr.Group(elem_classes="hidden-tab animate__animated animate__fadeInLeft") as gradcam_tab:
             gradcam = GradCAM(login.current_user)
         with gr.Group(elem_classes="hidden-tab animate__animated animate__fadeInLeft") as settings_tab:
-            settings = Settings()
+            settings = Settings(login.current_user)
             
     def show_login(status, user):
             return (
