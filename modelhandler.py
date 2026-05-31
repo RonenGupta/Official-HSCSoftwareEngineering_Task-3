@@ -193,7 +193,7 @@ class ModelManager():
 
         self.train_dataloader = DataLoader(self.train_dataset, batch_size=train_bs, shuffle=True)
 
-    def save_model(self, model, username, model_name, final_accuracy, final_loss, epochs):
+    def save_model(self, model, username, model_name, final_accuracy, final_loss, epochs, loss_curve, accuracy_curve):
 
         with open(USERS_JSON, "r") as f:
             users = json.load(f)
@@ -212,10 +212,14 @@ class ModelManager():
 
             models[model_name] = {
                 "path": str(model_path),
-                "accuracy": final_accuracy,
-                "loss": final_loss,
-                "epochs": epochs,
-                "date": str(datetime.datetime.now())
+                "accuracy": float(final_accuracy),
+                "loss": float(final_loss),
+                "epochs": int(epochs),
+                "date": str(datetime.datetime.now()),
+                "loss_curve": [float(x) for x in loss_curve],
+                "accuracy_curve": [float(x) for x in accuracy_curve],
+                "confusion_matrix": None,
+                "class_names": None
             }
             users[username]["models"] = models
 
@@ -230,7 +234,7 @@ class ModelManager():
         with open(USERS_JSON, 'r') as f:
             users = json.load(f)
         user_models = users[username].get("models", {})
-        model_path = user_models[model_name]
+        model_path = user_models[model_name]["path"]
         self.model = torchvision.models.resnet18(weights=None).to(device)
         self.model.fc = torch.nn.Sequential(
         torch.nn.Dropout(p=0.2, inplace=True),
@@ -262,7 +266,7 @@ class ModelManager():
         with open(USERS_JSON, 'r') as f:
             users = json.load(f)
         user_models = users[username].get("models", {})
-        model_path = user_models[model_name]
+        model_path = user_models[model_name]["path"]
         state_dict = torch.load(model_path, map_location=device)
 
         with open(f"{model_name}.pkl", "wb") as f:

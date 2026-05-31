@@ -60,7 +60,14 @@ class Dashboard():
         
         with gr.Group():
             gr.Markdown("### Your Models")
-            self.model_cards = gr.Column()
+            with gr.Column() as self.model_cards:
+                self.card_slots = []
+                for i in range(10):
+                    slot_md = gr.Textbox(value="", visible=False, interactive=True, lines=0, show_label=False)
+                    slot_loss = gr.Plot(visible=False)
+                    slot_acc = gr.Plot(visible=False)
+                    slot_cm = gr.Plot(visible=False)
+                    self.card_slots.append((slot_md, slot_loss, slot_acc, slot_cm))
 
     def load_dashboard(self, username):
         if not username:
@@ -79,7 +86,8 @@ class Dashboard():
                 0,
                 "No models yet :(",
                 "N/A",
-                "N/A"
+                "N/A",
+                {}
             )
         
         last_model = list(models.keys())[-1]
@@ -91,9 +99,57 @@ class Dashboard():
             count,
             last_model,
             last_acc,
-            last_time
+            last_time,
+            models
+        )
+    
+    def build_model_cards(self, models):
+        
+        updates = []
+
+        for _ in self.card_slots:
+            updates.extend([
+                gr.update(value="", visible=False),
+                gr.update(visible=False),
+                gr.update(visible=False),
+                gr.update(visible=False),
+            ])
+        
+        for i, (model_name, data) in enumerate(models.items()):
+            if i >= len(self.card_slots):
+                break
+
+            html = (
+            f"Model: {model_name}\n"
+            f"Accuracy: {data.get('accuracy', 'Unknown')}\n"
+            f"Loss: {data.get('loss', 'Unknown')}\n"
+            f"Epochs: {data.get('epochs', 'Unknown')}\n"
+            f"Date: {data.get('date', 'Unknown')}\n"
         )
 
+            base = i * 4
+
+            updates[base] = gr.update(value=html, visible=True)
+
+            if data.get("loss_curve"):
+                loss_fig = gm.update_loss(data["loss_curve"], len(data["loss_curve"]))
+                updates[base + 1] = gr.update(value=loss_fig, visible=True)
+
+            if data.get("accuracy_curve"):
+                acc_fig = gm.update_accuracy(data["accuracy_curve"], len(data["accuracy_curve"]))
+                updates[base + 2] = gr.update(value=acc_fig, visible=True)
+
+            if data.get("confusion_matrix"):
+                labels, preds = data["confusion_matrix"]
+                class_names = data.get("class_names", [])
+                cm_fig = gm.update_confusion_matrix(labels, preds, class_names)
+                updates[base + 3] = gr.update(value=cm_fig, visible=True)
+
+        return updates
+    
+    def get_card_components(self):
+        return [c for slot in self.card_slots for c in slot]
+    
 class Train_Tab():
     def __init__(self, current_user):
             gr.Markdown("### Train Models.")
@@ -242,6 +298,10 @@ class Train_Tab():
             fig = gm.update_loss(losses, epochs)
             acc_fig = gm.update_accuracy(accuracies, epochs)
             yield log, fig, acc_fig
+
+            self.losses = losses
+            self.accuracies = accuracies
+
             if NOTIFICATIONS_ENABLED:
                 gr.Info("Training completed successfully!", duration=8)
             if SOUNDSENABLED:
@@ -262,7 +322,7 @@ class Train_Tab():
             gr.Info("Saving completed successfully!", duration=8)
         if SOUNDSENABLED:
             pygame.mixer.music.play()
-        return mm.save_model(self.trained_model, user, model_name, accuracy, loss, epochs)
+        return mm.save_model(self.trained_model, user, model_name, accuracy, loss, epochs, self.losses, self.accuracies)
 
 class Test_Tab():
     def __init__(self, current_user):
@@ -330,6 +390,20 @@ class Test_Tab():
         loaded_model = mm.load_model(username, model, layer1, layer2, layer3, layer4, num_classes)
         
         test_metrics, all_labels, all_preds =  mm.test(loaded_model)
+       
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+        
+        model_entry = users[username]["models"][model]
+        model_entry["confusion_matrix"] = [
+            [int(x) for x in all_labels],
+            [int(x) for x in all_preds]
+        ]
+        model_entry["class_names"] = class_names
+
+        with open(USER_DB, "w") as f:
+            json.dump(users, f, indent=4)
+
         fig = gm.update_confusion_matrix(all_labels, all_preds, class_names)
         if NOTIFICATIONS_ENABLED:
             gr.Info("Testing completed successfully!", duration=8)

@@ -55,7 +55,9 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
     
     def show_dashboard(status, user):
         if user:
-            welcome, count, last_model, last_acc, last_time = dashboard.load_dashboard(user)
+            welcome, count, last_model, last_acc, last_time, models = dashboard.load_dashboard(user)
+            card_updates = dashboard.build_model_cards(models)
+
             return (
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="animate__animated animate__fadeInLeft"),
@@ -67,7 +69,9 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
                 count,
                 last_model,
                 last_acc,
-                last_time
+                last_time,
+
+                *card_updates
             )
         return show_login(status, user)
 
@@ -152,13 +156,13 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             ).then(
                 fn=show_dashboard,
                 inputs=[login.login_status, login.current_user],
-                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab, dashboard.welcome, dashboard.model_count, dashboard.last_model, dashboard.last_accuracy, dashboard.last_time]
+                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab, dashboard.welcome, dashboard.model_count, dashboard.last_model, dashboard.last_accuracy, dashboard.last_time, *dashboard.get_card_components()]
             )
 
             dashboard_button.click(
                 fn=show_dashboard,
                 inputs=[login.login_status, login.current_user],
-                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab, dashboard.welcome, dashboard.model_count, dashboard.last_model, dashboard.last_accuracy, dashboard.last_time]
+                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab, dashboard.welcome, dashboard.model_count, dashboard.last_model, dashboard.last_accuracy, dashboard.last_time, *dashboard.get_card_components()]
             )
             train_button.click(
                 fn=show_train,
