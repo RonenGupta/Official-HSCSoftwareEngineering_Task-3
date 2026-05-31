@@ -60,14 +60,22 @@ class Dashboard():
         
         with gr.Group():
             gr.Markdown("### Your Models")
-            with gr.Column() as self.model_cards:
+            with gr.Column() as self.model_cards:  
                 self.card_slots = []
-                for i in range(10):
-                    slot_md = gr.Textbox(value="", visible=False, interactive=True, lines=0, show_label=False)
-                    slot_loss = gr.Plot(visible=False)
-                    slot_acc = gr.Plot(visible=False)
-                    slot_cm = gr.Plot(visible=False)
-                    self.card_slots.append((slot_md, slot_loss, slot_acc, slot_cm))
+                cards_per_row = 2
+                for i in range(0, 10, cards_per_row):
+                    with gr.Row(equal_height=True):
+                        for j in range(cards_per_row):
+                            if i+j >= 10:
+                                break
+                            
+                            with gr.Column():
+                                with gr.Accordion(label=f"Model {i+j+1}", open=False,visible=False) as acc:
+                                    slot_md = gr.Textbox(value="", visible=False, interactive=False, lines=0, show_label=False)
+                                    slot_loss = gr.Plot(visible=False)
+                                    slot_acc = gr.Plot(visible=False)
+                                    slot_cm = gr.Plot(visible=False)
+                                    self.card_slots.append((acc, slot_md, slot_loss, slot_acc, slot_cm))
 
     def load_dashboard(self, username):
         if not username:
@@ -109,6 +117,7 @@ class Dashboard():
 
         for _ in self.card_slots:
             updates.extend([
+                gr.update(visible=False),
                 gr.update(value="", visible=False),
                 gr.update(visible=False),
                 gr.update(visible=False),
@@ -127,23 +136,26 @@ class Dashboard():
             f"Date: {data.get('date', 'Unknown')}\n"
         )
 
-            base = i * 4
+            base = i * 5
 
-            updates[base] = gr.update(value=html, visible=True)
+            updates[base] = gr.update(visible=True)
+
+            updates[base+1] = gr.update(value=html, visible=True)
+            
 
             if data.get("loss_curve"):
                 loss_fig = gm.update_loss(data["loss_curve"], len(data["loss_curve"]))
-                updates[base + 1] = gr.update(value=loss_fig, visible=True)
+                updates[base + 2] = gr.update(value=loss_fig, visible=True)
 
             if data.get("accuracy_curve"):
                 acc_fig = gm.update_accuracy(data["accuracy_curve"], len(data["accuracy_curve"]))
-                updates[base + 2] = gr.update(value=acc_fig, visible=True)
+                updates[base + 3] = gr.update(value=acc_fig, visible=True)
 
             if data.get("confusion_matrix"):
                 labels, preds = data["confusion_matrix"]
                 class_names = data.get("class_names", [])
                 cm_fig = gm.update_confusion_matrix(labels, preds, class_names)
-                updates[base + 3] = gr.update(value=cm_fig, visible=True)
+                updates[base + 4] = gr.update(value=cm_fig, visible=True)
 
         return updates
     

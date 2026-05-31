@@ -9,7 +9,7 @@ css = """
 }
 
 body, .gradio-container {
-    background: #d3d3d3 !important;   
+    background: #d7d3d1 !important;   
     min-height: 100vh !important;   
     padding: 20px !important;
 }

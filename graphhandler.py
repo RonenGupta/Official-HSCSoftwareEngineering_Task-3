@@ -37,5 +37,6 @@ class GraphManager():
         fig, ax = plt.subplots(figsize=(6, 6))
         disp.plot(ax=ax)
         plt.tight_layout()
+        plt.close(fig)
         return fig
         
