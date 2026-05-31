@@ -230,6 +230,7 @@ class Train_Tab():
             
     def train_pipeline(self, train_folder, epochs, lr, bs, layer1, layer2, layer3, layer4, selected_transforms, earlystopping, patience, arch_type):
         
+        self.arch_type = arch_type
         path = train_folder.name if hasattr(train_folder, "name") else train_folder
 
         final_transforms = []
@@ -322,7 +323,7 @@ class Train_Tab():
             gr.Info("Saving completed successfully!", duration=8)
         if SOUNDSENABLED:
             pygame.mixer.music.play()
-        return mm.save_model(self.trained_model, user, model_name, accuracy, loss, epochs, self.losses, self.accuracies)
+        return mm.save_model(self.trained_model, user, model_name, accuracy, loss, epochs, self.losses, self.accuracies, self.arch_type)
 
 class Test_Tab():
     def __init__(self, current_user):

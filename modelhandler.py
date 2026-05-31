@@ -193,7 +193,7 @@ class ModelManager():
 
         self.train_dataloader = DataLoader(self.train_dataset, batch_size=train_bs, shuffle=True)
 
-    def save_model(self, model, username, model_name, final_accuracy, final_loss, epochs, loss_curve, accuracy_curve):
+    def save_model(self, model, username, model_name, final_accuracy, final_loss, epochs, loss_curve, accuracy_curve, arch_type):
 
         with open(USERS_JSON, "r") as f:
             users = json.load(f)
@@ -216,10 +216,11 @@ class ModelManager():
                 "loss": float(final_loss),
                 "epochs": int(epochs),
                 "date": str(datetime.datetime.now()),
+                "architecture": arch_type,
                 "loss_curve": [float(x) for x in loss_curve],
                 "accuracy_curve": [float(x) for x in accuracy_curve],
                 "confusion_matrix": None,
-                "class_names": None
+                "class_names": None,
             }
             users[username]["models"] = models
 
@@ -235,10 +236,19 @@ class ModelManager():
             users = json.load(f)
         user_models = users[username].get("models", {})
         model_path = user_models[model_name]["path"]
-        self.model = torchvision.models.resnet18(weights=None).to(device)
+        model_arch = user_models[model_name]["architecture"]
+        resnet_models = {
+            "ResNet18": (torchvision.models.resnet18, 512),
+            "ResNet34": (torchvision.models.resnet34, 512),
+            "ResNet50": (torchvision.models.resnet50, 2048),
+            "ResNet101": (torchvision.models.resnet101, 2048),
+            "ResNet152": (torchvision.models.resnet152, 2048),
+        }
+        model_arch, in_features = resnet_models[model_arch]
+        self.model = model_arch(weights=None).to(device)
         self.model.fc = torch.nn.Sequential(
         torch.nn.Dropout(p=0.2, inplace=True),
-        torch.nn.Linear(512, num_classes)).to(device)
+        torch.nn.Linear(in_features, num_classes)).to(device)
 
         for param in self.model.parameters():
             param.requires_grad = False

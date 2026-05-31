@@ -164,6 +164,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
                 inputs=[login.login_status, login.current_user],
                 outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab, dashboard.welcome, dashboard.model_count, dashboard.last_model, dashboard.last_accuracy, dashboard.last_time, *dashboard.get_card_components()]
             )
+
             train_button.click(
                 fn=show_train,
                 inputs=[login.login_status, login.current_user],
