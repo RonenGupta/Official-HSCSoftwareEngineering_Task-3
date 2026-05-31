@@ -8,9 +8,27 @@
         "models": {}
     },
     "username1": {
-        "password": "$2b$12$viuFXuyUBSdCX713Lf0GO.rBcNHhn5LKtPRMCemtcFyEGYq9i/5J6",
+        "password": "$2b$12$I8asO953nJVsdLLaFfFiwO5juFP34wmwzH4wHTxamiUsVt6YGiemi",
         "models": {
-            "model1": "saved_models/username1_model1.pth"
+            "ResNet18": {
+                "path": "saved_models/username1_ResNet18.pth",
+                "accuracy": 1.0,
+                "loss": 0.004612753342371434,
+                "epochs": 10,
+                "date": "2026-05-31 19:02:01.445321"
+            }
+        }
+    },
+    "username2": {
+        "password": "$2b$12$UGUdRTHkhEpBeKTMTw9xoeOPnRrE1MRg8L7QsqFyA3GM43LbQ4WaG",
+        "models": {
+            "model2": {
+                "path": "saved_models/username2_model2.pth",
+                "accuracy": 1.0,
+                "loss": 0.01519571922835894,
+                "epochs": 10,
+                "date": "2026-05-31 20:23:21.267843"
+            }
         }
     }
 }

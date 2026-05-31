@@ -3,6 +3,9 @@ from modelhandler import ModelManager
 from securityhandler import SecurityManager
 from graphhandler import GraphManager
 from torchvision import transforms
+import threading
+import time
+import datetime
 import bcrypt
 import os
 import json
@@ -12,7 +15,7 @@ import pygame
 USER_DB = "users.json"
 
 pygame.mixer.init()
-music_path = "/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/music/mbappe-yamal-tiki.mp3"
+music_path = "/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/music/LevinIntro.mp3"
 pygame.mixer.music.load(music_path)
 
 NOTIFICATIONS_ENABLED = True
@@ -21,6 +24,75 @@ CURRENTVOLUME = 0.5
 
 mm = ModelManager()
 gm= GraphManager()
+
+class Dashboard():
+    def __init__(self, current_user):
+        self.current_user = current_user
+
+        gr.Markdown(
+            """
+            <div style='text-align: center; margin-bottom: 20px;'>
+                <h1 style ='margin-bottom: 0; font-size: 6rem; font-weight: 700; color: #1d1d1f; letter-spacing: -0.02em'> MyCNN Dashboard </h1>
+                <p style='font-size: 1.1rem; color: #555;'>Your central hub for training, testing, and managing convolutional models.</p>
+            </div>
+            """
+        )
+
+        with gr.Group():
+            self.welcome = gr.Markdown(
+                                    """
+                                    <div style='padding: 15px; border-radius: 10px; background: #ffffff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);'>
+                                        <h3>Welcome!</h3>
+                                        <p>Loading user data...</p>
+                                    </div>
+                                    """
+                                )
+        
+        with gr.Row():
+            with gr.Column():
+                self.model_count = gr.Number(label="Saved Models", interactive=False)
+            with gr.Column():
+                self.last_model = gr.Textbox(label = "Last Trained Model", interactive=False)
+            with gr.Column():
+                self.last_accuracy = gr.Textbox(label="Last Accuracy", interactive=False)
+            with gr.Column():
+                self.last_time = gr.Textbox(label="Last Time Trained", interactive=False)
+        
+        with gr.Group():
+            gr.Markdown("### Your Models")
+            self.model_cards = gr.Column()
+
+    def load_dashboard(self, username):
+        if not username:
+            return "<h3>Not logged in</h3>", 0, "-", "-"
+        
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+        
+        models = users[username]["models"]
+
+        count = len(models)
+
+        if count == 0:
+            return (
+                f"<h3>Welcome {username}!</h3><p>Noooooo noooooo train a model!! :p</p>",
+                0,
+                "No models yet :(",
+                "N/A",
+                "N/A"
+            )
+        
+        last_model = list(models.keys())[-1]
+        last_acc = models[last_model].get("accuracy", "Unknown")
+        last_time = models[last_model].get("date", "Unknown")
+
+        return (
+            f"<h3 style='font-size: 2rem;'>Welcome {username}!</h3><p>Here's your latest model activity.</p>",
+            count,
+            last_model,
+            last_acc,
+            last_time
+        )
 
 class Train_Tab():
     def __init__(self, current_user):
@@ -47,6 +119,10 @@ class Train_Tab():
             ]
 
             self.current_user = current_user
+            self.final_accuracy = gr.State()
+            self.final_loss = gr.State()
+            self.final_epochs = gr.State()
+
             with gr.Group():
                 gr.Markdown("Dataset Input")
                 self.train_path_input = gr.Textbox(label="Training Folder Path", placeholder="/absolute/path/to/your/dataset")
@@ -93,7 +169,7 @@ class Train_Tab():
 
             self.save_btn.click(
             fn=self.save_model,
-            inputs=[self.current_user, self.save_model_name],
+            inputs=[self.current_user, self.save_model_name, self.final_accuracy, self.final_loss, self.final_epochs],
             outputs=[self.save_status])
             
     def train_pipeline(self, train_folder, epochs, lr, bs, layer1, layer2, layer3, layer4, selected_transforms, earlystopping, patience, arch_type):
@@ -172,8 +248,11 @@ class Train_Tab():
                 pygame.mixer.music.play()
 
         self.trained_model = mm.model
+        self.final_accuracy.value = accuracies[-1]
+        self.final_loss.value = losses[-1]
+        self.final_epochs.value = len(losses)
 
-    def save_model(self, user, model_name):
+    def save_model(self, user, model_name, accuracy, loss, epochs):
         if not hasattr(self, "trained_model"):
             return "No model to train"
         
@@ -183,7 +262,7 @@ class Train_Tab():
             gr.Info("Saving completed successfully!", duration=8)
         if SOUNDSENABLED:
             pygame.mixer.music.play()
-        return mm.save_model(self.trained_model, user, model_name)
+        return mm.save_model(self.trained_model, user, model_name, accuracy, loss, epochs)
 
 class Test_Tab():
     def __init__(self, current_user):
@@ -285,11 +364,6 @@ class LoginSignUp():
                     self.login_password = gr.Textbox(label="Password")
                     self.login_btn = gr.Button("Login")
                     self.login_status = gr.Textbox(label="Status", interactive=False)
-
-                    self.login_btn.click(fn=self.login_pipeline,
-                                            inputs=[self.login_username, self.login_password],
-                                            outputs=[self.login_status, self.current_user]
-                                            )
                 with gr.Group():
                     gr.Markdown("Sign Up")
                     self.signup_username = gr.Textbox(label="Username")
@@ -366,7 +440,7 @@ class LoginSignUp():
             return "Incorrect password", None
         
         if NOTIFICATIONS_ENABLED:
-            gr.Info("Log In completed successfully!", duration=8)
+            gr.Info("Log In completed successfully!", duration=5)
         if SOUNDSENABLED:
             pygame.mixer.music.play()
         return f"Welcome {username}!", username
@@ -587,10 +661,19 @@ class Settings():
             pygame.mixer.music.set_volume(CURRENTVOLUME)
 
     def logout(self):
-        gr.Info(f"Logging out of {self.current_user}...", duration=3)
+        gr.Info(f"Logging out...", duration=3)
+        return None
 
     def close_app(self):
         gr.Info(f"Closing application...", duration=3)
+
+        def kill():
+            time.sleep(2)
+            os._exit(0)
+        
+        threading.Thread(target=kill).start()
+        
+        return
                     
 
         

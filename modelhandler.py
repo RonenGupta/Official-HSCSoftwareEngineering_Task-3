@@ -6,6 +6,7 @@ from torchvision.models import resnet18, ResNet18_Weights, resnet34, ResNet34_We
 import numpy as np
 import json  
 import pickle
+import datetime
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from pathlib import Path
 from pytorch_grad_cam import GradCAM
@@ -192,7 +193,7 @@ class ModelManager():
 
         self.train_dataloader = DataLoader(self.train_dataset, batch_size=train_bs, shuffle=True)
 
-    def save_model(self, model, username, model_name):
+    def save_model(self, model, username, model_name, final_accuracy, final_loss, epochs):
 
         with open(USERS_JSON, "r") as f:
             users = json.load(f)
@@ -203,13 +204,19 @@ class ModelManager():
         models = users[username].get("models", {})
 
         if model_name in models:
-            model_path = Path(models[model_name])
+            model_path = Path(models[model_name]["path"])
 
         else:
 
             model_path = Path(f"saved_models/{username}_{model_name}.pth")
 
-            models[model_name] = str(model_path)
+            models[model_name] = {
+                "path": str(model_path),
+                "accuracy": final_accuracy,
+                "loss": final_loss,
+                "epochs": epochs,
+                "date": str(datetime.datetime.now())
+            }
             users[username]["models"] = models
 
             with open (USERS_JSON, "w") as f:

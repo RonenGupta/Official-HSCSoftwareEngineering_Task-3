@@ -1,4 +1,4 @@
-from interfacehandler import Train_Tab, Test_Tab, LoginSignUp, GradCAM, Settings
+from interfacehandler import Dashboard, Train_Tab, Test_Tab, LoginSignUp, GradCAM, Settings
 import gradio as gr
 
 css = """
@@ -8,7 +8,7 @@ css = """
     gap: 24px !important;
 }
 
-.gradio-container {
+body, .gradio-container {
     background: #d3d3d3 !important;   
     min-height: 100vh !important;   
     padding: 20px !important;
@@ -32,6 +32,8 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
     with gr.Group():
         with gr.Group(elem_classes="animate__animated animate__fadeInLeft") as login_tab:
             login = LoginSignUp()
+        with gr.Group(elem_classes="hidden-tab animate__animated animate__fadeInLeft") as dashboard_tab:
+            dashboard = Dashboard(login.current_user)
         with gr.Group(elem_classes="hidden-tab animate__animated animate__fadeInLeft") as train_tab:
             train = Train_Tab(login.current_user)
         with gr.Group(elem_classes="hidden-tab animate__animated animate__fadeInLeft") as test_tab:
@@ -48,24 +50,38 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
             )
+    
+    def show_dashboard(status, user):
+        if user:
+            welcome, count, last_model, last_acc, last_time = dashboard.load_dashboard(user)
+            return (
+                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                gr.update(elem_classes="animate__animated animate__fadeInLeft"),
+                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                welcome,
+                count,
+                last_model,
+                last_acc,
+                last_time
+            )
+        return show_login(status, user)
 
     def show_train(status, user):
         if user:
             return (
+                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft")
             )
-        return (
-            gr.update(elem_classes="animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft")
-        )
+        return show_login(status, user)
 
     
     def show_test(status, user):
@@ -73,17 +89,12 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             return (
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
             )
-        return (
-            gr.update(elem_classes="animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft")
-    )
+        return show_login(status, user)
     
     def show_gradcam(status, user):
         if user:
@@ -91,16 +102,11 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="animate__animated animate__fadeInLeft"),
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft")
             )
-        return (
-            gr.update(elem_classes="animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft")
-        )
+        return show_login(status, user)
     
     def show_settings():
         return (
@@ -108,46 +114,86 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
             gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
             gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
             gr.update(elem_classes="animate__animated animate__fadeInLeft")
+        )
+    
+    def logout():
+        return (
+            gr.update(elem_classes="animate__animated animate__fadeInLeft"), 
+            gr.update(elem_classes="hidden-tab"), 
+            gr.update(elem_classes="hidden-tab"),
+            gr.update(elem_classes="hidden-tab"),  
+            gr.update(elem_classes="hidden-tab"), 
+            gr.update(elem_classes="hidden-tab"),  
+            None  
         )
         
     with gr.Sidebar():
         gr.Markdown("Navigation - MyCNN.")
         with gr.Column():
-            login_button = gr.Button("Login Tab")
-            train_button = gr.Button("Train Tab")
-            test_button = gr.Button("Test Tab")
-            gradcam_button = gr.Button("GradCAM Tab")
-            settings_button = gr.Button("Settings Tab", variant="secondary")
+            login_button = gr.Button("Login")
+            dashboard_button = gr.Button("Dashboard")
+            train_button = gr.Button("Train")
+            test_button = gr.Button("Test")
+            gradcam_button = gr.Button("GradCAM")
+            settings_button = gr.Button("Settings", variant="secondary")
 
             login_button.click(
                 fn=show_login,
                 inputs=[login.login_status, login.current_user],
-                outputs=[login_tab, train_tab, test_tab, gradcam_tab, settings_tab]
+                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab]
+            )
 
+            login.login_btn.click(
+                fn=login.login_pipeline,
+                inputs=[login.login_username, login.login_password],
+                outputs=[login.login_status, login.current_user]
+            ).then(
+                fn=show_dashboard,
+                inputs=[login.login_status, login.current_user],
+                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab, dashboard.welcome, dashboard.model_count, dashboard.last_model, dashboard.last_accuracy, dashboard.last_time]
+            )
+
+            dashboard_button.click(
+                fn=show_dashboard,
+                inputs=[login.login_status, login.current_user],
+                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab, dashboard.welcome, dashboard.model_count, dashboard.last_model, dashboard.last_accuracy, dashboard.last_time]
             )
             train_button.click(
                 fn=show_train,
                 inputs=[login.login_status, login.current_user],
-                outputs=[login_tab, train_tab, test_tab, gradcam_tab, settings_tab]
+                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab]
             )
 
             test_button.click(
                 fn=show_test,
                 inputs=[login.login_status, login.current_user],
-                outputs=[login_tab, train_tab, test_tab, gradcam_tab, settings_tab]
+                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab]
             )
 
             gradcam_button.click(
                 fn=show_gradcam,
                 inputs=[login.login_status, login.current_user],
-                outputs=[login_tab, train_tab, test_tab, gradcam_tab, settings_tab]
+                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab]
             )
 
             settings_button.click(
                 fn=show_settings,
                 inputs=[],
-                outputs=[login_tab, train_tab, test_tab, gradcam_tab, settings_tab]
+                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab]
+            )
+
+            settings.logout_btn.click(
+                fn=logout,
+                inputs=[],
+                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, settings_tab, login.current_user]
+            )
+
+            settings.close_btn.click(
+                fn=settings.close_app,
+                inputs=[],
+                outputs=[]
             )
 
 if __name__ == "__main__":
