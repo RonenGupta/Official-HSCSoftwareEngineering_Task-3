@@ -4,7 +4,8 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from torchvision.models import resnet18, ResNet18_Weights, resnet34, ResNet34_Weights, resnet50, ResNet50_Weights, resnet101, ResNet101_Weights, resnet152, ResNet152_Weights
 import numpy as np
-import json  
+import json
+import os  
 import pickle
 import datetime
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
@@ -158,6 +159,13 @@ class ModelManager():
                 layer = getattr(self.model, key)
                 for param in layer.parameters():
                     param.requires_grad = True
+        
+        self.layer_config = {
+            "layer1": layer1,  
+            "layer2": layer2,
+            "layer3": layer3,
+            "layer4": layer4     
+        }
     
     def test_transforms_dataset(self, test_transforms: transforms.Compose | None, test_path: str, test_bs: int = 32):
         """Setup dataloader for testing data"""
@@ -220,8 +228,11 @@ class ModelManager():
                 "loss_curve": [float(x) for x in loss_curve],
                 "accuracy_curve": [float(x) for x in accuracy_curve],
                 "confusion_matrix": None,
+                "layers": self.layer_config,
                 "class_names": None,
             }
+
+            models[model_name]["notes"] = "My honest reaction:"
             users[username]["models"] = models
 
             with open (USERS_JSON, "w") as f:
@@ -231,12 +242,14 @@ class ModelManager():
 
         return f"Model '{model_name}' saved!"
 
-    def load_model(self, username, model_name, layer1, layer2, layer3, layer4, num_classes = 2):
+    def load_model(self, username, model_name, num_classes = 2):
         with open(USERS_JSON, 'r') as f:
             users = json.load(f)
         user_models = users[username].get("models", {})
         model_path = user_models[model_name]["path"]
         model_arch = user_models[model_name]["architecture"]
+        layer_config = user_models[model_name]["layers"]
+
         resnet_models = {
             "ResNet18": (torchvision.models.resnet18, 512),
             "ResNet34": (torchvision.models.resnet34, 512),
@@ -244,25 +257,26 @@ class ModelManager():
             "ResNet101": (torchvision.models.resnet101, 2048),
             "ResNet152": (torchvision.models.resnet152, 2048),
         }
-        model_arch, in_features = resnet_models[model_arch]
-        self.model = model_arch(weights=None).to(device)
+        model_fn, in_features = resnet_models[model_arch]
+        self.model = model_fn(weights=None).to(device)
         self.model.fc = torch.nn.Sequential(
-        torch.nn.Dropout(p=0.2, inplace=True),
-        torch.nn.Linear(in_features, num_classes)).to(device)
+            torch.nn.Dropout(p=0.2, inplace=True),
+            torch.nn.Linear(in_features, num_classes)
+        ).to(device)
 
         for param in self.model.parameters():
             param.requires_grad = False
 
         layer_map = {
-            layer1: "layer1",
-            layer2: "layer2",
-            layer3: "layer3",
-            layer4: "layer4"
+            "layer1": "layer1",
+            "layer2": "layer2",
+            "layer3": "layer3",
+            "layer4": "layer4"
         }
 
-        for name, key in layer_map.items():
-            if name:
-                layer = getattr(self.model, key)
+        for layer_name, enabled in layer_map.items():
+            if enabled:
+                layer = getattr(self.model, layer_map[layer_name])
                 for param in layer.parameters():
                     param.requires_grad = True
 
@@ -281,10 +295,10 @@ class ModelManager():
 
         with open(f"{model_name}.pkl", "wb") as f:
             pickle.dump(state_dict, f)
-        
-        return f"{model_name} successfully saved!"
+
+        return
     
-    def gradcam(self, username, image, model_name, layer1, layer2, layer3, layer4, num_classes):
+    def gradcam(self, username, image, model_name, num_classes):
 
         input_tensor = image.unsqueeze(0).to(device)
         input_tensor.requires_grad_(True)
@@ -293,7 +307,7 @@ class ModelManager():
         rgb_img = (rgb_img - rgb_img.min()) / (rgb_img.max() - rgb_img.min())
         rgb_img = rgb_img.astype("float32")
 
-        loaded_model = self.load_model(username, model_name, layer1, layer2, layer3, layer4, num_classes)
+        loaded_model = self.load_model(username, model_name, num_classes)
         output = loaded_model(input_tensor)
         predicted_class = output.argmax().item()
 

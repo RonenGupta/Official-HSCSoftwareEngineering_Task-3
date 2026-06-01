@@ -11,6 +11,7 @@ import os
 import json
 import random
 import pygame
+from fpdf import FPDF
 
 USER_DB = "users.json"
 
@@ -72,11 +73,35 @@ class Dashboard():
                             with gr.Column():
                                 with gr.Accordion(label=f"Model {i+j+1}", open=False,visible=False) as acc:
                                     slot_md = gr.Textbox(value="", visible=False, interactive=False, lines=0, show_label=False)
+                                    slot_notes = gr.Textbox(label="Notes", visible=False, interactive=False)
                                     slot_loss = gr.Plot(visible=False)
                                     slot_acc = gr.Plot(visible=False)
                                     slot_cm = gr.Plot(visible=False)
-                                    self.card_slots.append((acc, slot_md, slot_loss, slot_acc, slot_cm))
+                                    download_btn = gr.Button("Download", visible=False)
+                                    delete_btn = gr.Button("Delete", visible=False)
+                                    pdf_btn = gr.Button("Generate PDF", visible=False)
+                                    self.card_slots.append((acc, slot_md, slot_notes, slot_loss, slot_acc, slot_cm, download_btn, delete_btn, pdf_btn))
 
+        for i, slot in enumerate(self.card_slots):
+            acc, slot_md, slot_notes, slot_loss, slot_acc, slot_cm, download_btn, delete_btn, pdf_btn = slot
+
+            download_btn.click(
+                fn=self.download_user_models,
+                inputs=[self.current_user, gr.Textbox(value=f"model{i+1}", visible=False)],
+                outputs=[]
+            )
+
+            delete_btn.click(
+                fn=self.delete_model,
+                inputs=[self.current_user, gr.Textbox(value=f"model{i+1}", visible=False)],
+                outputs=[]
+            )
+
+            pdf_btn.click(
+                fn=self.generate_pdf,
+                inputs=[self.current_user, gr.Textbox(value=f"model{i+1}", visible=False)]
+            )
+            
     def load_dashboard(self, username):
         if not username:
             return "<h3>Not logged in</h3>", 0, "-", "-"
@@ -122,6 +147,10 @@ class Dashboard():
                 gr.update(visible=False),
                 gr.update(visible=False),
                 gr.update(visible=False),
+                gr.update(visible=False),             
+                gr.update(visible=False),              
+                gr.update(visible=False),
+                gr.update(visible=False),                     
             ])
         
         for i, (model_name, data) in enumerate(models.items()):
@@ -134,33 +163,81 @@ class Dashboard():
             f"Loss: {data.get('loss', 'Unknown')}\n"
             f"Epochs: {data.get('epochs', 'Unknown')}\n"
             f"Date: {data.get('date', 'Unknown')}\n"
+            f"Architecture: {data.get('architecture')}\n"
         )
 
-            base = i * 5
+            base = i * 9
 
             updates[base] = gr.update(visible=True)
 
             updates[base+1] = gr.update(value=html, visible=True)
             
+            updates[base+2] = gr.update(value=data.get("notes", "No notes"), visible=True)
 
             if data.get("loss_curve"):
                 loss_fig = gm.update_loss(data["loss_curve"], len(data["loss_curve"]))
-                updates[base + 2] = gr.update(value=loss_fig, visible=True)
+                updates[base + 3] = gr.update(value=loss_fig, visible=True)
 
             if data.get("accuracy_curve"):
                 acc_fig = gm.update_accuracy(data["accuracy_curve"], len(data["accuracy_curve"]))
-                updates[base + 3] = gr.update(value=acc_fig, visible=True)
+                updates[base + 4] = gr.update(value=acc_fig, visible=True)
 
             if data.get("confusion_matrix"):
                 labels, preds = data["confusion_matrix"]
                 class_names = data.get("class_names", [])
                 cm_fig = gm.update_confusion_matrix(labels, preds, class_names)
-                updates[base + 4] = gr.update(value=cm_fig, visible=True)
+                updates[base + 5] = gr.update(value=cm_fig, visible=True)
+
+            updates[base+6] = gr.update(visible=True)
+            updates[base+7] = gr.update(visible=True)
+            updates[base+8] = gr.update(visible=True)
 
         return updates
     
     def get_card_components(self):
         return [c for slot in self.card_slots for c in slot]
+    
+    def delete_model(self, username, model_name):
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+        
+        if model_name in users[username]["models"]:
+            del users[username]["models"][model_name]
+        
+        model_path = f"models/{username}/{model_name}.pth"
+        if os.path.exists(model_path):
+            os.remove(model_path)
+        
+        with open(USER_DB, "w") as f:
+            json.dump(users, f, indent=4)
+        
+        return
+
+    def download_user_models(self, username, model):
+        mm.download_model(username, model)
+        if NOTIFICATIONS_ENABLED:
+            gr.Info("Downloading completed successfully!", duration=8)
+        if SOUNDSENABLED:
+            pygame.mixer.music.play()
+        return 
+    
+    def generate_pdf(self, username, model_name):
+        with open(USER_DB) as f:
+            users = json.load(f)
+        
+        data = users[username]["models"][model_name]
+
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(0, 10, f"Model Report: {model_name}")
+        for k, v in data.items():
+            pdf.cell(0, 10, f"{k}: {v}", ln=True)
+        
+        path = f"reports/{username}_{model_name}.pdf"
+        pdf.output(path)
+
+        return 
     
 class Train_Tab():
     def __init__(self, current_user):
@@ -300,12 +377,15 @@ class Train_Tab():
         mm.build(arch_type, layer1, layer2, layer3, layer4)
 
         gen =  mm.train(earlystopping, patience, epochs, lr)
+
         try:
+
             while True:
                 log, losses, accuracies = next(gen)
                 fig = gm.update_loss(losses, len(losses))
                 acc_fig = gm.update_accuracy(accuracies, len(accuracies))
                 yield log, fig, acc_fig
+
         except StopIteration as e:
             losses, accuracies = e.value
             fig = gm.update_loss(losses, epochs)
@@ -317,6 +397,7 @@ class Train_Tab():
 
             if NOTIFICATIONS_ENABLED:
                 gr.Info("Training completed successfully!", duration=8)
+
             if SOUNDSENABLED:
                 pygame.mixer.music.play()
 
@@ -331,10 +412,13 @@ class Train_Tab():
         
         if not model_name:
             return "Must pass model name"
+        
         if NOTIFICATIONS_ENABLED:
             gr.Info("Saving completed successfully!", duration=8)
+
         if SOUNDSENABLED:
             pygame.mixer.music.play()
+
         return mm.save_model(self.trained_model, user, model_name, accuracy, loss, epochs, self.losses, self.accuracies, self.arch_type)
 
 class Test_Tab():
@@ -351,14 +435,6 @@ class Test_Tab():
                 gr.Markdown("Testing Dataset")
                 self.test_path_input = gr.Textbox(label="Testing Folder Path", placeholder="/absolute/path/to/your/dataset")
             with gr.Group():
-                gr.Markdown("Architecture")
-                with gr.Row():
-                    self.layer1_input = gr.Checkbox(label="Use Layer1")
-                    self.layer2_input = gr.Checkbox(label="Use Layer2")
-                    self.layer3_input = gr.Checkbox(label="Use Layer3")
-                    self.layer4_input = gr.Checkbox(label="Use Layer4")
-            
-            with gr.Group():
                 gr.Markdown("Refresh and Download")
                 with gr.Column():
                     with gr.Row(equal_height=True):
@@ -368,14 +444,6 @@ class Test_Tab():
                                 inputs=[self.current_user],
                                 outputs=[self.model]
                             )
-                            self.download_btn = gr.Button("Download selected model")
-                self.download_status = gr.Textbox(label="Download Status")
-
-                self.download_btn.click(
-                    fn=self.download_user_models,
-                    inputs=[self.current_user, self.model],
-                    outputs=[self.download_status]
-                )
             with gr.Group():
                 gr.Markdown("Testing")
                 with gr.Column():
@@ -386,10 +454,10 @@ class Test_Tab():
 
                 self.test_btn.click(
                 fn=self.test_pipeline,
-                inputs=[self.current_user, self.model, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.test_path_input, self.bs_input],
+                inputs=[self.current_user, self.model, self.test_path_input, self.bs_input],
                 outputs=[self.test_status, self.test_graph])
 
-    def test_pipeline(self, username, model, layer1, layer2, layer3, layer4, test_folder, bs):
+    def test_pipeline(self, username, model, test_folder, bs):
 
         path = test_folder.name if hasattr(test_folder, "name") else test_folder
         
@@ -400,7 +468,7 @@ class Test_Tab():
         class_names = mm.test_transforms_dataset(None, test_path, bs)
         
         num_classes = len(class_names)
-        loaded_model = mm.load_model(username, model, layer1, layer2, layer3, layer4, num_classes)
+        loaded_model = mm.load_model(username, model, num_classes)
         
         test_metrics, all_labels, all_preds =  mm.test(loaded_model)
        
@@ -432,13 +500,6 @@ class Test_Tab():
         model_names = list(users[username]["models"].keys())
         return gr.update(choices=model_names, value=None)
     
-    def download_user_models(self, username, model):
-        download_status = mm.download_model(username, model)
-        if NOTIFICATIONS_ENABLED:
-            gr.Info("Downloading completed successfully!", duration=8)
-        if SOUNDSENABLED:
-            pygame.mixer.music.play()
-        return download_status
     
 class LoginSignUp():
     def __init__(self):    
@@ -561,13 +622,6 @@ class GradCAM():
         with gr.Group():
             gr.Markdown("Hyperparameters")
             self.bs_input = gr.Number(label="Batch Size")
-        with gr.Group():
-            gr.Markdown("Architecture")
-            with gr.Row():
-                self.layer1_input = gr.Checkbox(label="Use Layer1")
-                self.layer2_input = gr.Checkbox(label="Use Layer2")
-                self.layer3_input = gr.Checkbox(label="Use Layer3")
-                self.layer4_input = gr.Checkbox(label="Use Layer4")
         
         with gr.Group():
             gr.Markdown("Refresh Models")
@@ -594,7 +648,7 @@ class GradCAM():
         
         self.gcbutton.click(
             fn=self.update_gradcam,
-            inputs=[self.current_user, self.image_path_input, self.model, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.bs_input],
+            inputs=[self.current_user, self.image_path_input, self.model, self.bs_input],
             outputs=[self.predclass, self.originimage, self.gradimage]
         )
 
@@ -604,7 +658,7 @@ class GradCAM():
             outputs=[self.augmentation]
         )
 
-    def update_gradcam(self, username, dataset_path, model_name, layer1, layer2, layer3, layer4, bs):
+    def update_gradcam(self, username, dataset_path, model_name, bs):
         
         gradcam_path = os.path.join(dataset_path, "test")
         class_names = mm.test_transforms_dataset(None, gradcam_path, bs)
@@ -614,7 +668,7 @@ class GradCAM():
         index = random.randint(0, len(dataset) - 1) 
         pil_image, _ = dataset[index]
 
-        predicted_class, originimage, cam_image = mm.gradcam(username, pil_image, model_name, layer1, layer2, layer3, layer4, num_classes)
+        predicted_class, originimage, cam_image = mm.gradcam(username, pil_image, model_name, num_classes)
         predicted_label = class_names[predicted_class].capitalize()
         if NOTIFICATIONS_ENABLED:
             gr.Info("GradCAM computation completed successfully!", duration=8)
