@@ -34,15 +34,12 @@ div.column {
     border-color: #ffffff !important;
 }
 
-div.row:has(> .gr-markdown), 
-.gradio-container .gr-markdown,
+div.row:has(> .gr-markdown),
 .block p,
 div.row p {
     display: flex !important;
+    justify-content: center !important;
     align-items: center !important;
-    align-content: center !important;
-    margin-bottom: 0 !important;
-    padding-top: 4px !important;
 }
 
 .models-section {
@@ -192,7 +189,15 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         )
         
     with gr.Sidebar():
-        gr.Markdown("Navigation - MyCNN.")
+        gr.Markdown(
+            f"""
+            <div>
+                <img src='/gradio_api/file=static/MyCNN.jpg' 
+                     style='width: 300px; height: auto; display: block; margin-left: auto; margin-right: auto;' 
+                     alt='MyCNN Logo' />
+            </div>
+            """
+        )
         with gr.Column():
             login_button = gr.Button("Login")
             dashboard_button = gr.Button("Dashboard")
@@ -260,4 +265,4 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             )
 
 if __name__ == "__main__":
-    demo.launch(css=css, theme=gr.themes.Citrus(), footer_links=["settings"], allowed_paths=["."])
+    demo.launch(css=css, theme=gr.themes.Citrus(), footer_links=[], allowed_paths=["."])

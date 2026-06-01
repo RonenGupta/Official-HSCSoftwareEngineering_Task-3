@@ -124,7 +124,7 @@ class ModelManager():
             yield log, losses, accuracies
         return losses, accuracies
 
-    def build(self, architecture: str = "ResNet18", layer1: bool = False, layer2: bool = False, layer3: bool = False, layer4: bool = False):
+    def build(self, architecture: str = "ResNet18", layer1: bool = False, layer2: bool = False, layer3: bool = False, layer4: bool = False, dropout=0.2):
         """Model build process"""
         resnet_models = {
             "ResNet18": (torchvision.models.resnet18, 512),
@@ -136,7 +136,7 @@ class ModelManager():
         model_arch, in_features = resnet_models[architecture]
         self.model = model_arch(weights="DEFAULT").to(device)
         self.model.fc = torch.nn.Sequential(
-        torch.nn.Dropout(p=0.2, inplace=True),
+        torch.nn.Dropout(p=dropout, inplace=True),
         torch.nn.Linear(in_features=in_features,
                     out_features=len(self.train_dataset.classes),
                     bias=True)).to(device)

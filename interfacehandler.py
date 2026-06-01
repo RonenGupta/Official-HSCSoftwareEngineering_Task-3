@@ -6,6 +6,7 @@ from torchvision import transforms
 import threading
 import time
 import datetime
+import re
 import bcrypt
 import os
 import json
@@ -14,6 +15,7 @@ import pygame
 from fpdf import FPDF
 
 USER_DB = "users.json"
+MUSIC_FOLDER = "music"
 
 pygame.mixer.init()
 music_path = "/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/music/LevinIntro.mp3"
@@ -140,12 +142,10 @@ class Dashboard():
         last_time = models[last_model].get("date", "Unknown")
 
         return (
-            gr.Markdown(
-                f"""
+            f"""
             ## **Welcome {username}!**
             ### Here's your latest model activity.
-            """
-            ),
+            """,
             count,
             last_model,
             last_acc,
@@ -307,10 +307,11 @@ class Train_Tab():
                 self.lr_input= gr.Slider(0.0001, 0.1, label="Learning Rate")
                 self.epoch_input = gr.Number(label="Epochs")
                 self.bs_input = gr.Number(label="Batch Size")
+                self.dropout_input = gr.Slider(0.0, 0.7, value=0.2, step=0.05, label="Dropout Rate")
             with gr.Group():
                 gr.Markdown("Early Stopping")
                 self.earlystopping_input = gr.Checkbox(label="Enable Early Stopping", value=False)
-                self.patience_input = gr.Slider(0, 20, step=1, label="Patience (Epochs)")
+                self.patience_input = gr.Slider(1, 20, step=1, label="Patience (Epochs)")
             with gr.Group():
                 gr.Markdown("Transforms")
                 self.train_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for training!")
@@ -340,7 +341,7 @@ class Train_Tab():
 
             self.train_btn.click(
             fn=self.train_pipeline,
-            inputs=[self.train_path_input, self.epoch_input, self.lr_input, self.bs_input, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.train_transforms_input, self.earlystopping_input, self.patience_input, self.archtype_input],
+            inputs=[self.train_path_input, self.epoch_input, self.lr_input, self.bs_input, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.train_transforms_input, self.earlystopping_input, self.patience_input, self.archtype_input, self.dropout_input],
             outputs=[self.train_status, self.train_graph, self.acc_graph])
 
             self.save_btn.click(
@@ -348,7 +349,7 @@ class Train_Tab():
             inputs=[self.current_user, self.save_model_name, self.final_accuracy, self.final_loss, self.final_epochs],
             outputs=[self.save_status])
             
-    def train_pipeline(self, train_folder, epochs, lr, bs, layer1, layer2, layer3, layer4, selected_transforms, earlystopping, patience, arch_type):
+    def train_pipeline(self, train_folder, epochs, lr, bs, layer1, layer2, layer3, layer4, selected_transforms, earlystopping, patience, arch_type, dropout):
         
         self.arch_type = arch_type
         path = train_folder.name if hasattr(train_folder, "name") else train_folder
@@ -405,7 +406,7 @@ class Train_Tab():
         
         train_path = os.path.join(path, "train")
         mm.train_transforms_dataset(train_transforms, train_path, bs)
-        mm.build(arch_type, layer1, layer2, layer3, layer4)
+        mm.build(arch_type, layer1, layer2, layer3, layer4, dropout)
 
         gen =  mm.train(earlystopping, patience, epochs, lr)
 
@@ -535,6 +536,7 @@ class Test_Tab():
 class LoginSignUp():
     def __init__(self):    
             self.current_user = gr.State(value=None)
+            self.failed_attempts = {}
             gr.Markdown("### Login / Sign Up.")
             with gr.Row(equal_height=True, elem_classes="spaced-row"):
                 with gr.Group():
@@ -545,14 +547,16 @@ class LoginSignUp():
                     self.login_status = gr.Textbox(label="Status", interactive=False)
                 with gr.Group():
                     gr.Markdown("Sign Up")
+                    self.signup_email = gr.Textbox(label="Email")
                     self.signup_username = gr.Textbox(label="Username")
                     self.signup_password = gr.Textbox(label="Password")
+                    self.signup_confirm = gr.Textbox(label="Confirm Password", type="password")
                     self.signup_btn = gr.Button("Create Account")
                     self.signup_status = gr.Textbox(label="Status", interactive=False)
 
                     self.signup_btn.click(
                         fn=self.signup_pipeline,
-                        inputs=[self.signup_username, self.signup_password],
+                        inputs=[self.signup_email, self.signup_username, self.signup_password, self.signup_confirm],
                         outputs=self.signup_status
                     )
 
@@ -587,15 +591,53 @@ class LoginSignUp():
             return bcrypt.checkpw(password.encode(), hashed.encode())
         except Exception as e:
             return f"Exception: {e}"
+    
+    @staticmethod
+    def validate_email(email):
+        return re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", email)
+    
+    @staticmethod
+    def validate_password(password: str):
+        return (
+            len(password) >= 8 and
+            any(character.isdigit() for character in password) and
+            any(character.isalpha() for character in password)
+        )
 
-    def signup_pipeline(self, username, password):
+    @staticmethod
+    def find_user(users, username):
+        for u in users:
+            if u.lower() == username.lower():
+                return u
+        return None
+
+    def signup_pipeline(self, email, username, password, confirm):
         users = self.load_users()
 
-        if not username or not password:
-            return "Username and password required"
+        if not self.validate_email(email):
+            return "Invalid email format"
+        
+        if not username or len(username) < 3:
+            return "Username must be at least 3 characters"
 
-        if username in users:
+        if not self.validate_password(password):
+            return "Password must be 8+ characters with letters and numbers"
+        
+        if password != confirm:
+            return "Passwords do not match"
+        
+        if self.find_user(users, username):
             return "Username already exists"
+        
+        users[username] = {
+            "email": email,
+            "password": self.hash_password(password),
+            "models": {},
+            "join_date": str(datetime.datetime.now())
+        }
+
+        self.save_users(users)
+
         if NOTIFICATIONS_ENABLED:
             gr.Info("Sign Up completed successfully!", duration=8)
             users[username] = {
@@ -605,24 +647,31 @@ class LoginSignUp():
         if SOUNDSENABLED:
             pygame.mixer.music.play()
 
-
-        self.save_users(users)
         return "Account created!"
     
     def login_pipeline(self, username, password):
         users = self.load_users()
 
-        if username not in users:
-            return "User not found", None
+        if self.failed_attempts.get(username, 0) >= 5:
+            return "Too many failed attempts. Try again later.", None
+        
+        real_user = self.find_user(users, username)
+        if not real_user:
+            self.failed_attempts[username] = self.failed_attempts.get(username, 0) + 1
+            return "Invalid username or password", None
         
         if not self.check_password(password, users[username]["password"]):
+            self.failed_attempts[username] = self.failed_attempts.get(username, 0) + 1
             return "Incorrect password", None
         
+        self.failed_attempts[username] = 0
+
+        users[real_user]["last_login"] = str(datetime.datetime.now())
         if NOTIFICATIONS_ENABLED:
             gr.Info("Log In completed successfully!", duration=5)
         if SOUNDSENABLED:
             pygame.mixer.music.play()
-        return f"Welcome {username}!", username
+        return f"Welcome {real_user}!", real_user
 
 class GradCAM():
     def __init__(self, current_user):
@@ -776,10 +825,17 @@ class Settings():
 
         with gr.Group():
             gr.Markdown("Music Player")
+            self.music_dropdown = gr.Dropdown(
+                choices=self.list_music_files(),
+                label="Select Music Track"
+            )
 
-            self.audio_file = gr.Audio(
+            self.play_btn = gr.Button("Play")
+            self.stop_btn = gr.Button("Stop")
+
+            self.custom_audio_file = gr.Audio(
                 type="filepath", 
-                label="Upload & Play Music", 
+                label="Upload & Play Custom Music", 
                 interactive=True
             )
         
@@ -811,7 +867,19 @@ class Settings():
             fn=self.update_volume,
             inputs=[self.volume_slider],
             outputs=None
+        )
+
+        self.play_btn.click(
+            fn=self.play_music,
+            inputs=[self.music_dropdown],
+            outputs=[]
         )    
+
+        self.stop_btn.click(
+            fn=self.stop_music,
+            inputs=[],
+            outputs=[]
+        )
 
         self.logout_btn.click(fn=self.logout)
         self.close_btn.click(fn=self.close_app)
@@ -831,6 +899,22 @@ class Settings():
         CURRENTVOLUME = volume / 100.0
         if pygame.mixer.get_init():
             pygame.mixer.music.set_volume(CURRENTVOLUME)
+    
+    def play_music(self, track):
+        try:
+            pygame.mixer.music.load(os.path.join(MUSIC_FOLDER, track))
+            pygame.mixer.music.play()
+            return gr.Info(f"Playing: {track}")
+        except Exception as e:
+            return f"Error: {e}"
+    
+    def stop_music(self):
+        pygame.mixer.music.stop()
+        return gr.Info(f"Music stopped")
+
+    @staticmethod
+    def list_music_files():
+        return [f for f in os.listdir(MUSIC_FOLDER) if f.endswith(".mp3")]
 
     def logout(self):
         gr.Info(f"Logging out...", duration=3)
