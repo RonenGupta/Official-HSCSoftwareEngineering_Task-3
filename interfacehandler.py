@@ -2,6 +2,7 @@ import gradio as gr
 from modelhandler import ModelManager
 from securityhandler import SecurityManager
 from graphhandler import GraphManager
+import torch
 from torchvision import transforms
 import threading
 import time
@@ -13,6 +14,14 @@ import json
 import random
 import pygame
 from fpdf import FPDF
+
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+elif torch.backends.mps.is_available():
+    device = torch.device("mps")
+else:
+    device = torch.device("cpu")
+device
 
 USER_DB = "users.json"
 MUSIC_FOLDER = "music"
@@ -816,7 +825,75 @@ class GradCAM():
         
         model_names = list(users[username]["models"].keys())
         return gr.update(choices=model_names, value=None)
+
+class FeatureViz():
+    def __init__(self, current_user):
+        gr.Markdown("### Feature Visualization (Activation Maximization)")
+        self.current_user = current_user
+
+        with gr.Group():
+            gr.Markdown("Model Selection")
+            self.model = gr.Dropdown(choices=[], label="Select a saved model", interactive=True)
+
+        with gr.Group():
+            gr.Markdown("Layer and Channel")
+            self.layer_name = gr.Textbox(label="Layer name (e.g. layer4.1.conv2)")
+            self.channel_idx = gr.Number(label = "Channel index", value = 0, precision = 0)
+            self.img_size = gr.Slider(64, 256, value = 224, step = 16, label="Image Size")
+            self.steps = gr.Slider(20, 200, value=80, step=10, label="Optimization steps")
+            self.lr = gr.Slider(0.01, 0.5, value=0.1, step=0.01, label="Learning rate")
+
+        with gr.Group():
+            self.refresh_btn = gr.Button("Refresh Saved Models")
+            self.run_btn = gr.Button("Generate Feature Visualization")
+            self.output_image = gr.Image(type="numpy", label="Synthesized Feature Image", interactive=False)
+        
+        self.refresh_btn.click(
+            fn=self.get_user_models,
+            inputs=[self.current_user],
+            outputs=[self.model]
+        )
+
+        self.run_btn.click(
+            fn=self.run_feature_viz,
+            inputs=[self.current_user, self.model, self.layer_name, self.channel_idx, self.img_size, self.steps, self.lr],
+            outputs=[self.output_image]
+        )
+
+    def get_user_models(self, username):
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+        model_names = list(users[username]["models"].keys())
+        return gr.update(choices=model_names, value=None)
     
+    def run_feature_viz(self, username, model_name, layer_name, channel_idx, img_size, steps, lr):
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+        model_entry = users[username]["models"][model_name]
+
+        if model_entry.get("class_names") is not None:
+            num_classes = len(model_entry["class_names"])
+        else:
+            num_classes = model_entry.get("num_classes", 2)
+
+        loaded_model = mm.load_model(username, model_name, num_classes)
+        mm.model = loaded_model.to(device)
+
+        img = mm.feature_visualization(
+            layer_name = layer_name,
+            channel_idx = int(channel_idx),
+            img_size = int(img_size),
+            steps = int(steps),
+            lr = float(lr),
+        )
+
+        if NOTIFICATIONS_ENABLED:
+            gr.Info("Feature visualization generated successfully!", duration=8)
+        if SOUNDSENABLED:
+            pygame.mixer.music.play()
+
+        return img
+
 class Settings():
     def __init__(self, current_user):
         gr.Markdown("# Configure Settings")

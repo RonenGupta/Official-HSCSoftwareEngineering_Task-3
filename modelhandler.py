@@ -1,8 +1,10 @@
 import torch
+import torch.nn.functional as F
 import torchvision
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from torchvision.models import resnet18, ResNet18_Weights, resnet34, ResNet34_Weights, resnet50, ResNet50_Weights, resnet101, ResNet101_Weights, resnet152, ResNet152_Weights
+from PIL import Image
 import numpy as np
 import json
 import os  
@@ -282,6 +284,9 @@ class ModelManager():
 
         state_dict = torch.load(model_path, map_location=device)
         self.model.load_state_dict(state_dict)
+
+        self.model = self.model.to(device)
+        self.model = self.model.float()
         self.model.eval()
 
         return self.model
@@ -318,3 +323,82 @@ class ModelManager():
         cam_image = show_cam_on_image(rgb_img, grayscale_cam, use_rgb = True)
     
         return predicted_class, rgb_img, cam_image
+    
+    def gaussian_blur(self, img, sigma):
+        k = int(2 * round(3 * sigma) + 1)
+        x = torch.arange(k) - k // 2
+        gauss = torch.exp(-(x**2) / (2 * sigma**2))
+        gauss = gauss / gauss.sum()
+        kernel = gauss[:, None] * gauss[None, :]
+        kernel = kernel.expand(3, 1, k, k).to(img.device)
+        return F.conv2d(img, kernel, padding=k//2, groups=3)
+    
+    def feature_visualization(
+        self,
+        layer_name: str,
+        channel_idx: int,
+        img_size: int=224,
+        steps: int= 80,
+        lr: float=0.1,
+        tv_weight: float = 1e-4,
+        l2_weight: float = 1e-4,
+        device: str = None
+    ):
+        if device is None:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.model.eval().to(device)
+
+        def get_layer(model, layer_name):
+            modules = dict([*model.named_modules()])
+            return modules.get(layer_name)
+
+        target_layer = get_layer(self.model, layer_name)
+        if target_layer is None:
+            raise ValueError(f"Layer {layer_name} not found in model.")
+
+        activation = None
+
+        def hook_fn(module, input, output):
+            nonlocal activation
+            activation = output
+
+        handle = target_layer.register_forward_hook(hook_fn)
+
+        img = torch.randn(1, 3, img_size, img_size, device=device, requires_grad = True)
+        optimizer = torch.optim.Adam([img], lr=lr)
+
+        for step in range(steps):
+            optimizer.zero_grad()
+
+            _ = self.model(img)
+
+            if activation is None:
+                continue
+
+            loss = -activation[:, channel_idx].mean()
+
+            loss += 1e-4 * torch.norm(img)
+
+            tv = (
+                torch.sum(torch.abs(img[:, :, :, :-1] - img[:, :, :, 1:])) + \
+                torch.sum(torch.abs(img[:, :, :-1, :] - img[:, :, 1:, :]))
+            )
+            loss += 1e-4 * tv
+
+            if step % 12 == 0 and step > 40:
+                sigma = 0.5 + (step / steps) * 0.5
+                img.data = self.gaussian_blur(img, sigma)
+
+            loss.backward()
+            optimizer.step()
+
+            img.data = torch.clamp(img.data, -2.5, 2.5)
+        
+        handle.remove()
+
+        img = img.detach().cpu().squeeze()
+        img = (img - img.min()) / (img.max() - img.min() + 1e-8)
+        img = (img * 255).clamp(0, 255).byte().permute(1, 2, 0).numpy()
+
+        return Image.fromarray(img)
