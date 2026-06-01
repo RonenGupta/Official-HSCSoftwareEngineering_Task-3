@@ -31,13 +31,18 @@ class Dashboard():
         self.current_user = current_user
 
         gr.Markdown(
-            """
+            f"""
             <div style='text-align: center; margin-bottom: 20px;'>
-                <h1 style ='margin-bottom: 0; font-size: 6rem; font-weight: 700; color: #1d1d1f; letter-spacing: -0.02em'> MyCNN Dashboard </h1>
-                <p style='font-size: 1.1rem; color: #555;'>Your central hub for training, testing, and managing convolutional models.</p>
+                <img src='/gradio_api/file=static/MyCNN.jpg' 
+                     style='width: 800px; height: auto; display: block; margin-left: auto; margin-right: auto;' 
+                     alt='MyCNN Logo' />
+                <p style='font-size: 1.1rem; color: #555; margin-bottom: 10px;'>
+                    Your central hub for training, testing, and managing convolutional models.
+                </p>
             </div>
             """
         )
+
 
         with gr.Group():
             self.welcome = gr.Markdown(
@@ -51,7 +56,7 @@ class Dashboard():
         
         with gr.Row():
             with gr.Column():
-                self.model_count = gr.Number(label="Saved Models", interactive=False)
+                self.model_count = gr.Textbox(label="Saved Models", interactive=False)
             with gr.Column():
                 self.last_model = gr.Textbox(label = "Last Trained Model", interactive=False)
             with gr.Column():
@@ -59,7 +64,7 @@ class Dashboard():
             with gr.Column():
                 self.last_time = gr.Textbox(label="Last Time Trained", interactive=False)
         
-        with gr.Group():
+        with gr.Group(elem_classes = "models-section"):
             gr.Markdown("### Your Models")
             with gr.Column() as self.model_cards:  
                 self.card_slots = []
@@ -73,17 +78,24 @@ class Dashboard():
                             with gr.Column():
                                 with gr.Accordion(label=f"Model {i+j+1}", open=False,visible=False) as acc:
                                     slot_md = gr.Textbox(value="", visible=False, interactive=False, lines=0, show_label=False)
-                                    slot_notes = gr.Textbox(label="Notes", visible=False, interactive=False)
+                                    slot_notes = gr.Textbox(label="Notes", visible=False, interactive=True)
+                                    save_notes_btn = gr.Button("Save Notes", visible=False)
                                     slot_loss = gr.Plot(visible=False)
                                     slot_acc = gr.Plot(visible=False)
                                     slot_cm = gr.Plot(visible=False)
                                     download_btn = gr.Button("Download", visible=False)
                                     delete_btn = gr.Button("Delete", visible=False)
                                     pdf_btn = gr.Button("Generate PDF", visible=False)
-                                    self.card_slots.append((acc, slot_md, slot_notes, slot_loss, slot_acc, slot_cm, download_btn, delete_btn, pdf_btn))
+                                    self.card_slots.append((acc, slot_md, slot_notes, save_notes_btn, slot_loss, slot_acc, slot_cm, download_btn, delete_btn, pdf_btn))
 
         for i, slot in enumerate(self.card_slots):
-            acc, slot_md, slot_notes, slot_loss, slot_acc, slot_cm, download_btn, delete_btn, pdf_btn = slot
+            acc, slot_md, slot_notes, save_notes_btn, slot_loss, slot_acc, slot_cm, download_btn, delete_btn, pdf_btn = slot
+
+            save_notes_btn.click(
+                fn=self.update_notes,
+                inputs=[self.current_user, gr.Textbox(value=f"model{i+1}", visible=False), slot_notes], 
+                outputs=[]
+            )
 
             download_btn.click(
                 fn=self.download_user_models,
@@ -101,7 +113,7 @@ class Dashboard():
                 fn=self.generate_pdf,
                 inputs=[self.current_user, gr.Textbox(value=f"model{i+1}", visible=False)]
             )
-            
+
     def load_dashboard(self, username):
         if not username:
             return "<h3>Not logged in</h3>", 0, "-", "-"
@@ -128,7 +140,12 @@ class Dashboard():
         last_time = models[last_model].get("date", "Unknown")
 
         return (
-            f"<h3 style='font-size: 2rem;'>Welcome {username}!</h3><p>Here's your latest model activity.</p>",
+            gr.Markdown(
+                f"""
+            ## **Welcome {username}!**
+            ### Here's your latest model activity.
+            """
+            ),
             count,
             last_model,
             last_acc,
@@ -144,6 +161,7 @@ class Dashboard():
             updates.extend([
                 gr.update(visible=False),
                 gr.update(value="", visible=False),
+                gr.update(visible=False),
                 gr.update(visible=False),
                 gr.update(visible=False),
                 gr.update(visible=False),
@@ -166,7 +184,7 @@ class Dashboard():
             f"Architecture: {data.get('architecture')}\n"
         )
 
-            base = i * 9
+            base = i * 10
 
             updates[base] = gr.update(visible=True)
 
@@ -174,23 +192,25 @@ class Dashboard():
             
             updates[base+2] = gr.update(value=data.get("notes", "No notes"), visible=True)
 
+            updates[base+3] = gr.update(visible=True)
+
             if data.get("loss_curve"):
                 loss_fig = gm.update_loss(data["loss_curve"], len(data["loss_curve"]))
-                updates[base + 3] = gr.update(value=loss_fig, visible=True)
+                updates[base + 4] = gr.update(value=loss_fig, visible=True)
 
             if data.get("accuracy_curve"):
                 acc_fig = gm.update_accuracy(data["accuracy_curve"], len(data["accuracy_curve"]))
-                updates[base + 4] = gr.update(value=acc_fig, visible=True)
+                updates[base + 5] = gr.update(value=acc_fig, visible=True)
 
             if data.get("confusion_matrix"):
                 labels, preds = data["confusion_matrix"]
                 class_names = data.get("class_names", [])
                 cm_fig = gm.update_confusion_matrix(labels, preds, class_names)
-                updates[base + 5] = gr.update(value=cm_fig, visible=True)
+                updates[base + 6] = gr.update(value=cm_fig, visible=True)
 
-            updates[base+6] = gr.update(visible=True)
             updates[base+7] = gr.update(visible=True)
             updates[base+8] = gr.update(visible=True)
+            updates[base+9] = gr.update(visible=True)
 
         return updates
     
@@ -238,6 +258,17 @@ class Dashboard():
         pdf.output(path)
 
         return 
+    
+    def update_notes(self, username, model_name, new_notes):
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+
+        users[username]["models"][model_name]["notes"] = new_notes
+
+        with open(USER_DB, "w") as f:
+            json.dump(users, f, indent=4)
+        
+        return gr.Info("Notes updated!", duration=6)
     
 class Train_Tab():
     def __init__(self, current_user):

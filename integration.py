@@ -1,5 +1,6 @@
 from interfacehandler import Dashboard, Train_Tab, Test_Tab, LoginSignUp, GradCAM, Settings
 import gradio as gr
+from pathlib import Path
 
 css = """
 @import url('https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css');
@@ -9,9 +10,65 @@ css = """
 }
 
 body, .gradio-container {
-    background: #d7d3d1 !important;   
+    background: transparent !important;   
     min-height: 100vh !important;   
     padding: 20px !important;
+}
+
+.gradio-container,
+div[class*="gr-"],
+div[class*="svelte-"],
+.tabs,
+.tab-nav,
+.tabitem,
+.form,
+.gap,
+.block,
+fieldset,
+.g-row,
+.g-col,
+div.row,
+div.column {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    border-color: #ffffff !important;
+}
+
+div.row:has(> .gr-markdown), 
+.gradio-container .gr-markdown,
+.block p,
+div.row p {
+    display: flex !important;
+    align-items: center !important;
+    align-content: center !important;
+    margin-bottom: 0 !important;
+    padding-top: 4px !important;
+}
+
+.models-section {
+    margin-top: 32px !important; 
+    margin-bottom: 32px !important;
+}
+
+h1, h2, h3, .gradio-container h1, .gradio-container h2, .gradio-container h3 {
+    color: #ff9800 !important; 
+    font-weight: 700 !important;
+}
+
+.block, 
+fieldset, 
+.accordion, 
+details, 
+input, 
+textarea, 
+select {
+    border: 1px solid #e2e8f0 !important; 
+    border-radius: 12px !important; 
+}
+
+.tab-nav {
+    border-bottom: 2px solid #e2e8f0 !important;
+    margin-bottom: 12px !important;
 }
 
 .fixed-width-container, 
@@ -26,6 +83,7 @@ body, .gradio-container {
     display: none !important;
 }
 """
+gr.set_static_paths(paths=[Path.cwd() / "static"])
 
 with gr.Blocks(fill_height=True, fill_width=True) as demo:
 
@@ -202,4 +260,4 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             )
 
 if __name__ == "__main__":
-    demo.launch(css=css, theme=gr.themes.Citrus(), footer_links=["settings"])
+    demo.launch(css=css, theme=gr.themes.Citrus(), footer_links=["settings"], allowed_paths=["."])

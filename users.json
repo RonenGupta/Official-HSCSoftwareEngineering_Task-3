@@ -357,7 +357,7 @@
                     "ants",
                     "bees"
                 ],
-                "notes": "My honest reaction:"
+                "notes": "This is my first model, made with ResNet18, Layer4 Unfrozen and Default Transforms trained on Hymenoptera!"
             }
         }
     }
