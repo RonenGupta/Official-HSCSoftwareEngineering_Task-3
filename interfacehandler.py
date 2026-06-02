@@ -454,7 +454,7 @@ class Train_Tab():
             cpu_ram_fig = gm.update_cpu_ram_plot(self.cpu_history, self.ram_history)
 
             yield log, fig, acc_fig, gpu_fig, cpu_ram_fig, analytics
-            
+
             self.losses = losses
             self.accuracies = accuracies
 
@@ -858,12 +858,19 @@ class FeatureViz():
             self.model = gr.Dropdown(choices=[], label="Select a saved model", interactive=True)
 
         with gr.Group():
+            gr.Markdown("Visualization Mode")
+            self.vis_mode = gr.Radio(["Channel Visualization", "Activation Maps"], label="Visualization Mode")
+
+        with gr.Group():
             gr.Markdown("Layer and Channel")
             self.layer_name = gr.Textbox(label="Layer name (e.g. layer4.1.conv2)")
-            self.channel_idx = gr.Number(label = "Channel index", value = 0, precision = 0)
-            self.img_size = gr.Slider(64, 256, value = 224, step = 16, label="Image Size")
-            self.steps = gr.Slider(20, 200, value=80, step=10, label="Optimization steps")
-            self.lr = gr.Slider(0.01, 0.5, value=0.1, step=0.01, label="Learning rate")
+            self.channel_idx_input = gr.Number(label = "Channel Index", elem_id="ch_idx")
+            self.input_image = gr.Image(label="Input Image", type="pil", elem_id="img_in", visible=False)
+
+        with gr.Group():
+            self.img_size = gr.Slider(64, 256, value = 224, step = 16, label="Image Size", elem_id="img_size")
+            self.steps = gr.Slider(20, 1000, value=80, step=10, label="Optimization steps", elem_id="steps")
+            self.lr = gr.Slider(0.001, 0.5, value=0.1, step=0.01, label="Learning rate", elem_id="lr")
 
         with gr.Group():
             self.refresh_btn = gr.Button("Refresh Saved Models")
@@ -876,9 +883,15 @@ class FeatureViz():
             outputs=[self.model]
         )
 
+        self.vis_mode.change(
+            fn=self.update_visibility,
+            inputs=[self.vis_mode],
+            outputs=[self.channel_idx_input, self.input_image, self.img_size, self.steps, self.lr]
+        )
+
         self.run_btn.click(
             fn=self.run_feature_viz,
-            inputs=[self.current_user, self.model, self.layer_name, self.channel_idx, self.img_size, self.steps, self.lr],
+            inputs=[self.current_user, self.model, self.vis_mode, self.layer_name, self.channel_idx_input, self.input_image, self.img_size, self.steps, self.lr],
             outputs=[self.output_image]
         )
 
@@ -888,7 +901,7 @@ class FeatureViz():
         model_names = list(users[username]["models"].keys())
         return gr.update(choices=model_names, value=None)
     
-    def run_feature_viz(self, username, model_name, layer_name, channel_idx, img_size, steps, lr):
+    def run_feature_viz(self, username, model_name, mode, layer_name, channel_idx, input_image, img_size, steps, lr):
         with open(USER_DB, "r") as f:
             users = json.load(f)
         model_entry = users[username]["models"][model_name]
@@ -901,13 +914,32 @@ class FeatureViz():
         loaded_model = mm.load_model(username, model_name, num_classes)
         mm.model = loaded_model.to(device)
 
-        img = mm.feature_visualization(
-            layer_name = layer_name,
+        if mode == "Channel":
+            img = mm.feature_visualization(
+            layer_name = str(layer_name),
             channel_idx = int(channel_idx),
             img_size = int(img_size),
             steps = int(steps),
             lr = float(lr),
         )
+
+        elif mode == "Activation Maps":
+            if input_image is None:
+                return gr.Error("Please upload an image for activation maps.")
+            
+            preprocess = transforms.Compose([
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+            ])
+
+            img_tensor = preprocess(input_image).unsqueeze(0).to(device)
+
+            activations = mm.get_activation_maps(mm.model, layer_name, img_tensor)
+            grid_img = mm.activation_grid(activations)
+
+            return grid_img
 
         if NOTIFICATIONS_ENABLED:
             gr.Info("Feature visualization generated successfully!", duration=8)
@@ -915,6 +947,26 @@ class FeatureViz():
             pygame.mixer.music.play()
 
         return img
+    
+    def update_visibility(self, mode):
+        if mode == "Channel Visualization":
+            return [
+                gr.update(visible=True),
+                gr.update(visible=False),
+                gr.update(visible=True),
+                gr.update(visible=True),
+                gr.update(visible=True),
+            ]
+        elif mode == "Activation Maps":
+            return [
+                gr.update(visible=False),
+                gr.update(visible=True),
+                gr.update(visible=False),
+                gr.update(visible=False),
+                gr.update(visible=False),
+            ]
+        else:
+            return [gr.update(visible=True)] * 5
 
 class Settings():
     def __init__(self, current_user):

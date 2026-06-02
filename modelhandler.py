@@ -7,6 +7,7 @@ from torchvision.models import resnet18, ResNet18_Weights, resnet34, ResNet34_We
 from PIL import Image
 import numpy as np
 import json
+import math
 import time
 import os  
 import pickle
@@ -425,6 +426,48 @@ class ModelManager():
 
         return Image.fromarray(img)
     
+    def get_activation_maps(self, model, layer_name, image_tensor):
+        activations = {}
+
+        def hook_fn(module, input, output):
+            activations['feat'] = output.detach().cpu()
+        
+        layer = dict(model.named_modules())[layer_name]
+        handle = layer.register_forward_hook(hook_fn)
+
+        _ = model(image_tensor)
+
+        handle.remove()
+
+        return activations['feat']
+    
+    def activation_grid(self, activations, max_cols=8):
+        acts = activations.squeeze(0)
+
+        C, H, W = acts.shape
+
+        acts = acts.clone()
+        for i in range(C):
+            ch = acts[i]
+            ch = (ch - ch.min()) / (ch.max() - ch.min() + 1e-8)
+            acts[i] = ch
+        
+        acts = acts.cpu().numpy()
+        cols = min(max_cols, C)
+        rows = math.ceil(C / cols)
+        grid = np.zeros((rows * H, cols * W), dtype=np.uint8)
+
+        idx = 0
+        for r in range(rows):
+            for c in range(cols):
+                if idx >= C:
+                    break
+                ch_img = (acts[idx] * 255).astype(np.uint8)
+                grid[r*H:(r+1)*H, c*W:(c+1)*W] = ch_img
+                idx += 1
+        
+        return Image.fromarray(grid)
+
     def get_cpu_ram_usage(self):
         cpu = psutil.cpu_percent()
         ram = psutil.virtual_memory().percent
