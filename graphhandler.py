@@ -39,4 +39,27 @@ class GraphManager():
         plt.tight_layout()
         plt.close(fig)
         return fig
-        
+    
+    def update_gpu_plot(self, gpu_history):
+        fig, ax = plt.subplots()
+        ax.plot(gpu_history, color="red")
+        ax.set_ylim(0, 100)
+        ax.set_title("GPU Load (%)")
+        ax.set_xlabel("Update step")
+        ax.set_ylabel("Load %")
+        plt.tight_layout()
+        plt.close(fig)
+        return fig
+    
+    def update_cpu_ram_plot(self, cpu_history, ram_history):
+        fig, ax = plt.subplots()
+        ax.plot(cpu_history, label="CPU", color="blue")
+        ax.plot(ram_history, label="RAM", color="green")
+        ax.set_ylim(0, 100)
+        ax.set_xlabel("Update step")
+        ax.set_ylabel("Usage %")
+        ax.legend()
+        ax.set_title("CPU / RAM (%)")
+        plt.tight_layout()
+        plt.close(fig)
+        return fig

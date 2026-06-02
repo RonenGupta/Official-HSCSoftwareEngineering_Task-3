@@ -7,9 +7,12 @@ from torchvision.models import resnet18, ResNet18_Weights, resnet34, ResNet34_We
 from PIL import Image
 import numpy as np
 import json
+import time
 import os  
 import pickle
 import datetime
+import psutil
+import subprocess
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from pathlib import Path
 from pytorch_grad_cam import GradCAM
@@ -79,12 +82,16 @@ class ModelManager():
         EPOCHS = epochs
         losses = []
         accuracies= []
+
         for epoch in range(EPOCHS):
             train_loss = 0
             train_acc = 0
             
             self.model.train()
             for X, y in self.train_dataloader:
+
+                step_start = time.time()
+
                 X = X.to(device)
                 y = y.to(device)
 
@@ -100,6 +107,21 @@ class ModelManager():
                 loss.backward()
 
                 optimizer.step()
+
+                step_time = time.time() - step_start
+                iters_per_sec = 1 / step_time
+
+                cpu, ram = self.get_cpu_ram_usage()
+                gpu = self.get_gpu_usage()
+
+                analytics = {
+                    "epoch": epoch + 1,
+                    "step_time": step_time,
+                    "iters_per_sec": iters_per_sec,
+                    "cpu": cpu,
+                    "ram": ram,
+                    "gpu": gpu
+                }
 
             avg_train_loss = train_loss / len(self.train_dataloader)
             avg_train_acc = train_acc / len(self.train_dataloader)
@@ -123,7 +145,7 @@ class ModelManager():
                         break
             log += "\n"
 
-            yield log, losses, accuracies
+            yield log, losses, accuracies, analytics
         return losses, accuracies
 
     def build(self, architecture: str = "ResNet18", layer1: bool = False, layer2: bool = False, layer3: bool = False, layer4: bool = False, dropout=0.2):
@@ -402,3 +424,26 @@ class ModelManager():
         img = (img * 255).clamp(0, 255).byte().permute(1, 2, 0).numpy()
 
         return Image.fromarray(img)
+    
+    def get_cpu_ram_usage(self):
+        cpu = psutil.cpu_percent()
+        ram = psutil.virtual_memory().percent
+        return cpu, ram
+    
+    def get_gpu_usage(self):
+        try:
+            result = subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu",
+             "--format=csv, noheader, nounits"]
+            ).decode("utf-8").strip()
+
+            gpu_util, mem_used, mem_total, temp = result.split(", ")
+
+            return {
+                "load": float(gpu_util),
+                "memory_used": float(mem_used),
+                "memory_total": float(mem_total),
+                "temperature": float(temp)
+            }
+        except Exception:
+            return None

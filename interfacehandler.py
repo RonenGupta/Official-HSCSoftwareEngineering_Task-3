@@ -308,6 +308,10 @@ class Train_Tab():
             self.final_loss = gr.State()
             self.final_epochs = gr.State()
 
+            self.gpu_history = []
+            self.cpu_history = []
+            self.ram_history = []
+
             with gr.Group():
                 gr.Markdown("Dataset Input")
                 self.train_path_input = gr.Textbox(label="Training Folder Path", placeholder="/absolute/path/to/your/dataset")
@@ -341,6 +345,12 @@ class Train_Tab():
                     self.train_graph = gr.Plot(label="Loss Curve")
                     self.acc_graph = gr.Plot(label="Accuracy Curve")
             with gr.Group():
+                gr.Markdown("System Analytics")
+                with gr.Row(equal_height = True):
+                    self.gpu_plot = gr.Plot(label="GPU Usage (%)")
+                    self.cpu_plot = gr.Plot(label = "CPU / RAM (%)")
+                self.analytics_json = gr.JSON(label="Live Analytics")
+            with gr.Group():
                 gr.Markdown("Save Model")
                 with gr.Row(equal_height=True):
                     with gr.Column():
@@ -351,7 +361,7 @@ class Train_Tab():
             self.train_btn.click(
             fn=self.train_pipeline,
             inputs=[self.train_path_input, self.epoch_input, self.lr_input, self.bs_input, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.train_transforms_input, self.earlystopping_input, self.patience_input, self.archtype_input, self.dropout_input],
-            outputs=[self.train_status, self.train_graph, self.acc_graph])
+            outputs=[self.train_status, self.train_graph, self.acc_graph, self.gpu_plot, self.cpu_plot, self.analytics_json])
 
             self.save_btn.click(
             fn=self.save_model,
@@ -422,17 +432,29 @@ class Train_Tab():
         try:
 
             while True:
-                log, losses, accuracies = next(gen)
+                log, losses, accuracies, analytics = next(gen)
+                self.gpu_history.append(analytics["gpu"]["load"] if analytics["gpu"] else 0)
+                self.cpu_history.append(analytics["cpu"])
+                self.ram_history.append(analytics["ram"])
                 fig = gm.update_loss(losses, len(losses))
                 acc_fig = gm.update_accuracy(accuracies, len(accuracies))
-                yield log, fig, acc_fig
+                gpu_fig = gm.update_gpu_plot(self.gpu_history)
+                cpu_ram_fig = gm.update_cpu_ram_plot(self.cpu_history, self.ram_history)
+
+                yield log, fig, acc_fig, gpu_fig, cpu_ram_fig, analytics
 
         except StopIteration as e:
             losses, accuracies = e.value
+            self.gpu_history.append(analytics["gpu"]["load"] if analytics["gpu"] else 0)
+            self.cpu_history.append(analytics["cpu"])
+            self.ram_history.append(analytics["ram"])
             fig = gm.update_loss(losses, epochs)
             acc_fig = gm.update_accuracy(accuracies, epochs)
-            yield log, fig, acc_fig
+            gpu_fig = gm.update_gpu_plot(self.gpu_history)
+            cpu_ram_fig = gm.update_cpu_ram_plot(self.cpu_history, self.ram_history)
 
+            yield log, fig, acc_fig, gpu_fig, cpu_ram_fig, analytics
+            
             self.losses = losses
             self.accuracies = accuracies
 
