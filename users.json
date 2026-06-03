@@ -1432,6 +1432,38 @@
                 "notes": "My honest reaction:"
             }
         },
-        "join_date": "2026-06-01 20:57:52.473851"
+        "join_date": "2026-06-01 20:57:52.473851",
+        "preferences": {
+            "default_architecture": "ResNet18",
+            "default_learning_rate": 0.001,
+            "default_epochs": 10,
+            "default_batch_size": 32,
+            "default_dropout": 0.2,
+            "default_activation_layer": "layer4",
+            "default_featureviz_layer": "layer4",
+            "default_featureviz_channel": 0,
+            "notifications": true,
+            "sound": true,
+            "profile_picture": "static/profile_pics/username1.png"
+        }
+    },
+    "username2": {
+        "email": "saber.cool@example.com",
+        "password": "$2b$12$1PbyEHDW/dv10XVySx7D/uw7dqu09RxQ/dz/x4ucgHVsARSbKRT.O",
+        "models": {},
+        "join_date": "2026-06-03 23:06:30.761583",
+        "preferences": {
+            "default_architecture": "ResNet18",
+            "default_learning_rate": 0.001,
+            "default_epochs": 10,
+            "default_batch_size": 32,
+            "default_dropout": 0.2,
+            "default_activation_layer": "layer4",
+            "default_featureviz_layer": "layer4",
+            "default_featureviz_channel": 0,
+            "notifications": true,
+            "sound": true,
+            "profile_picture": null
+        }
     }
 }

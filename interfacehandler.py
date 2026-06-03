@@ -2,6 +2,7 @@ import gradio as gr
 from modelhandler import ModelManager
 from securityhandler import SecurityManager
 from graphhandler import GraphManager
+from profilehandler import ProfileManager
 import torch
 from torchvision import transforms
 import threading
@@ -13,6 +14,7 @@ import os
 import json
 import random
 import pygame
+import shutil
 from fpdf import FPDF
 
 if torch.cuda.is_available():
@@ -36,11 +38,11 @@ CURRENTVOLUME = 0.5
 
 mm = ModelManager()
 gm= GraphManager()
+pm = ProfileManager()
 
 class Dashboard():
     def __init__(self, current_user):
         self.current_user = current_user
-
         gr.Markdown(
             f"""
             <div style='text-align: center; margin-bottom: 20px;'>
@@ -132,6 +134,8 @@ class Dashboard():
         with open(USER_DB, "r") as f:
             users = json.load(f)
         
+        pic = users[username].get("preferences", {}).get("profile_picture", None)
+
         models = users[username]["models"]
 
         count = len(models)
@@ -159,7 +163,7 @@ class Dashboard():
             last_model,
             last_acc,
             last_time,
-            models
+            models,
         )
     
     def build_model_cards(self, models):
@@ -304,6 +308,7 @@ class Train_Tab():
             ]
 
             self.current_user = current_user
+            prefs = pm.get_preferences(current_user)
             self.final_accuracy = gr.State()
             self.final_loss = gr.State()
             self.final_epochs = gr.State()
@@ -311,16 +316,16 @@ class Train_Tab():
             self.gpu_history = []
             self.cpu_history = []
             self.ram_history = []
-
+    
             with gr.Group():
                 gr.Markdown("Dataset Input")
                 self.train_path_input = gr.Textbox(label="Training Folder Path", placeholder="/absolute/path/to/your/dataset")
             with gr.Group():
                 gr.Markdown("Hyperparameters")
-                self.lr_input= gr.Slider(0.0001, 0.1, label="Learning Rate")
-                self.epoch_input = gr.Number(label="Epochs")
-                self.bs_input = gr.Number(label="Batch Size")
-                self.dropout_input = gr.Slider(0.0, 0.7, value=0.2, step=0.05, label="Dropout Rate")
+                self.lr_input= gr.Slider(0.0001, 0.1, label="Learning Rate", value=prefs.get("default_learning_rate"))
+                self.epoch_input = gr.Number(label="Epochs", value=prefs.get("default_epochs"))
+                self.bs_input = gr.Number(label="Batch Size", value=prefs.get("default_batch_size"))
+                self.dropout_input = gr.Slider(0.0, 0.7, step=0.05, label="Dropout Rate", value=prefs.get("default_dropout"))
             with gr.Group():
                 gr.Markdown("Early Stopping")
                 self.earlystopping_input = gr.Checkbox(label="Enable Early Stopping", value=False)
@@ -330,12 +335,12 @@ class Train_Tab():
                 self.train_transforms_input = gr.CheckboxGroup(choices=transform_options, label="Select transforms for training!")
             with gr.Group():
                 gr.Markdown("Architecture")
-                self.archtype_input = gr.Dropdown(choices=architecture_options, label="Select preferred model architecture (The smaller the dataset, the smaller the architecture)")
+                self.archtype_input = gr.Dropdown(choices=architecture_options, label="Select preferred model architecture (The smaller the dataset, the smaller the architecture)", value=prefs.get("default_architecture"))
                 with gr.Row():
-                    self.layer1_input = gr.Checkbox(label="Use Layer1")
-                    self.layer2_input = gr.Checkbox(label="Use Layer2")
-                    self.layer3_input = gr.Checkbox(label="Use Layer3")
-                    self.layer4_input = gr.Checkbox(label="Use Layer4")
+                    self.layer1_input = gr.Checkbox(label="Use Layer1", value = prefs.get("default_activation_layer") == "layer1")
+                    self.layer2_input = gr.Checkbox(label="Use Layer2", value = prefs.get("default_activation_layer") == "layer2")
+                    self.layer3_input = gr.Checkbox(label="Use Layer3", value = prefs.get("default_activation_layer") == "layer3")
+                    self.layer4_input = gr.Checkbox(label="Use Layer4", value = prefs.get("default_activation_layer") == "layer4")
             
             with gr.Group():
                 gr.Markdown("Training")
@@ -488,12 +493,14 @@ class Test_Tab():
     def __init__(self, current_user):
             gr.Markdown("### Test Models.")
             self.current_user = current_user
+        
+            prefs = pm.get_preferences(current_user)
             with gr.Group():
                 gr.Markdown("Model Selection")
                 self.model = gr.Dropdown(choices=[], label="Select a saved model for testing!", interactive=True)
             with gr.Group():
                 gr.Markdown("Hyperparameters")
-                self.bs_input = gr.Number(label="Batch Size")
+                self.bs_input = gr.Number(label="Batch Size", value=prefs.get("default_batch_size"))
             with gr.Group():
                 gr.Markdown("Testing Dataset")
                 self.test_path_input = gr.Textbox(label="Testing Folder Path", placeholder="/absolute/path/to/your/dataset")
@@ -664,17 +671,28 @@ class LoginSignUp():
             "email": email,
             "password": self.hash_password(password),
             "models": {},
-            "join_date": str(datetime.datetime.now())
+            "join_date": str(datetime.datetime.now()),
+            "preferences": {
+                "default_architecture": "ResNet18",
+                "default_learning_rate": 0.001,
+                "default_epochs": 10,
+                "default_batch_size": 32,
+                "default_dropout": 0.2,
+
+                "default_activation_layer": "layer4",
+                "default_featureviz_layer": "layer4",
+                "default_featureviz_channel": 0,
+
+                "notifications": True,
+                "sound": True,
+                "profile_picture": None
+                }
         }
 
         self.save_users(users)
 
         if NOTIFICATIONS_ENABLED:
             gr.Info("Sign Up completed successfully!", duration=8)
-            users[username] = {
-                "password": self.hash_password(password),
-                "models": {}
-            }
         if SOUNDSENABLED:
             pygame.mixer.music.play()
 
@@ -720,6 +738,7 @@ class GradCAM():
                 "Normalize"
             ]
         self.current_user = current_user
+        
         with gr.Group():
                 gr.Markdown("Image Dataset")
                 self.image_path_input = gr.Textbox(label="Image Folder Path", placeholder="/absolute/path/to/your/dataset")
@@ -852,7 +871,8 @@ class FeatureViz():
     def __init__(self, current_user):
         gr.Markdown("### Feature Visualization (Activation Maximization)")
         self.current_user = current_user
-
+        
+        prefs = pm.get_preferences(current_user)
         with gr.Group():
             gr.Markdown("Model Selection")
             self.model = gr.Dropdown(choices=[], label="Select a saved model", interactive=True)
@@ -863,8 +883,8 @@ class FeatureViz():
 
         with gr.Group():
             gr.Markdown("Layer and Channel")
-            self.layer_name = gr.Textbox(label="Layer name (e.g. layer4.1.conv2)")
-            self.channel_idx_input = gr.Number(label = "Channel Index", elem_id="ch_idx")
+            self.layer_name = gr.Textbox(label="Layer name (e.g. layer4.1.conv2)", value=prefs.get("default_featureviz_layer"))
+            self.channel_idx_input = gr.Number(label = "Channel Index", elem_id="ch_idx", value=prefs.get("default_featureviz_channel"))
             self.input_image = gr.Image(label="Input Image", type="pil", elem_id="img_in", visible=False)
 
         with gr.Group():
@@ -973,6 +993,8 @@ class Settings():
         gr.Markdown("# Configure Settings")
 
         self.current_user = current_user
+        
+        prefs = pm.get_preferences(current_user)
 
         with gr.Group():
             gr.Markdown("Music Player")
@@ -993,14 +1015,52 @@ class Settings():
         with gr.Group():
             gr.Markdown("Notifications and Sounds")
             
-            self.notifications = gr.Checkbox(label="Enable Gradio Notifications", value=True, interactive=True)
-            self.sounds = gr.Checkbox(label="Enable Sound Effects", value=True, interactive=True)
+            self.notifications = gr.Checkbox(label="Enable Gradio Notifications", interactive=True, value=prefs.get("notifications", True))
+            self.sounds = gr.Checkbox(label="Enable Sound Effects", interactive=True, value=prefs.get("sound", True))
             self.volume_slider = gr.Slider(minimum=0, maximum=100, value=50, step=5, label="Sound Volume (%)", interactive=True)
 
         with gr.Group():
             gr.Markdown("Session")
             self.logout_btn = gr.Button("Log Out")
             self.close_btn = gr.Button("Close App")
+        
+        with gr.Group():
+            gr.Markdown("Profile Preferences")
+
+            self.pref_arch = gr.Dropdown(
+                ["ResNet18", "ResNet34", "ResNet50", "ResNet101", "ResNet152"],
+                label="Default Architecture",
+                value=prefs.get("default_architecture", "ResNet18")
+            )
+            self.pref_lr = gr.Slider(0.0001, 0.1, label="Default Learning Rate", value=prefs.get("default_learning_rate", 0.001))
+            self.pref_epochs = gr.Number(label="Default Epochs", value=prefs.get("default_epochs", 10))
+            self.pref_bs = gr.Number(label="Default Batch Size", value=prefs.get("default_batch_size", 32))
+            self.pref_dropout = gr.Slider(0.0, 0.7, label="Default Dropout", value=prefs.get("default_dropout", 0.2))
+
+            self.pref_act_layer = gr.Dropdown(
+                ["layer1", "layer2", "layer3", "layer4"],
+                label="Default Activation Layer",
+                value=prefs.get("default_activation_layer", "layer4")
+            )
+
+            self.pref_fv_layer = gr.Dropdown(
+                ["layer1", "layer2", "layer3", "layer4"],
+                label = "Default FeatureViz Layer",
+                value=prefs.get("default_featureviz_layer", "layer4")
+            )
+
+            self.pref_fv_channel = gr.Number(label="Default FeatureViz Channel", value=prefs.get("default_featureviz_channel", 0))
+        
+            self.save_prefs_button = gr.Button("Save Preferences")
+
+        with gr.Group():
+            gr.Markdown("Profile Picture Customisation")
+            self.profile_pic_upload = gr.Image(
+            label="Upload Profile Picture",
+            type="filepath"
+            )
+            self.save_pic_btn = gr.Button("Save Profile Picture")
+
         
         self.notifications.change(
             fn=self.toggle_notifications,
@@ -1032,9 +1092,78 @@ class Settings():
             outputs=[]
         )
 
+        self.save_prefs_button.click(
+            fn=self.save_preferences,
+            inputs=[
+                self.current_user,
+                self.pref_arch,
+                self.pref_lr,
+                self.pref_epochs,
+                self.pref_bs,
+                self.pref_dropout,
+                self.pref_act_layer,
+                self.pref_fv_layer,
+                self.pref_fv_channel,
+                self.notifications,
+                self.sounds,
+            ],
+            outputs=[]
+        )
+
+        self.save_pic_btn.click(
+            fn=self.save_profile_picture,
+            inputs=[self.current_user, self.profile_pic_upload],
+            outputs=[]
+        )
+
         self.logout_btn.click(fn=self.logout)
         self.close_btn.click(fn=self.close_app)
+    
+    def save_preferences(
+            self, current_user_state, arch, lr, epochs, bs, dropout,
+            act_layer, fv_layer, fv_channel,
+            notifications, sound
+    ):
+
+        username = current_user_state.value if hasattr(current_user_state, "value") else current_user_state
+
+        if not username:
+            return gr.Info("Please log in before saving preferences.")
+        try:
+            pm.update_preference(self.current_user, "default_architecture", arch)
+            pm.update_preference(self.current_user, "default_learning_rate", lr)
+            pm.update_preference(self.current_user, "default_epochs", epochs)
+            pm.update_preference(self.current_user, "default_batch_size", bs)
+            pm.update_preference(self.current_user, "default_dropout", dropout)
+            pm.update_preference(self.current_user, "default_activation_layer", act_layer)
+            pm.update_preference(self.current_user, "default_featureviz_layer", fv_layer)
+            pm.update_preference(self.current_user, "default_featureviz_channel", fv_channel)
+            pm.update_preference(self.current_user, "notifications", notifications)
+            pm.update_preference(self.current_user, "sound", sound)
+
+            return gr.Info("Preferences Saved!")
+        except Exception as e:
+            return gr.Error(f"Failed to save preferences: {str(e)}")
+    
+    def save_profile_picture(self, username, image_path):
+        if username is None:
+            return gr.Info("Please log in before uploading an image.")
+        if image_path is None:
+            return gr.Info("No image uploaded.")
         
+        os.makedirs("static/profile_pics", exist_ok = True)
+        save_path = f"static/profile_pics/{username}.png"
+        shutil.copy(image_path, save_path)
+
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+        
+        users[username]["preferences"]["profile_picture"] = save_path
+        with open(USER_DB, "w") as f:
+            json.dump(users, f, indent=4)
+        
+        return gr.Info("Profile picture updated!")
+    
     def toggle_notifications(self, notifications: bool):
         global NOTIFICATIONS_ENABLED
         NOTIFICATIONS_ENABLED = notifications

@@ -1,0 +1,12 @@
+torch
+torchvision
+pytorch-grad-cam
+matplotlib
+scikit-learn
+numpy
+pillow
+gradio
+psutil
+pygame
+fpdf
+bcrypt
