@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import numpy as np
 
 class GraphManager():
     def __init__(self):
@@ -60,6 +61,21 @@ class GraphManager():
         ax.set_ylabel("Usage %")
         ax.legend()
         ax.set_title("CPU / RAM (%)")
+        plt.tight_layout()
+        plt.close(fig)
+        return fig
+    
+    def rebuild_confusion_matrix(self, stored, class_names):
+        stored = np.array(stored)
+        cm = np.zeros((2, 2), dtype=int)
+
+        for true_class in [0, 1]:
+            for pred in stored[true_class]:
+                cm[true_class][pred] += 1
+
+        fig, ax = plt.subplots(figsize=(6, 6))
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_names)
+        disp.plot(ax=ax)
         plt.tight_layout()
         plt.close(fig)
         return fig

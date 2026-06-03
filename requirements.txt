@@ -8,5 +8,5 @@ pillow
 gradio
 psutil
 pygame
-fpdf
+reportlab
 bcrypt

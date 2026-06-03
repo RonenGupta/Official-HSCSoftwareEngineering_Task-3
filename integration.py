@@ -171,7 +171,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         if user:
             with open(USER_DB, "r") as f:
                 users = json.load(f)
-            pic = users[user]["preferences"].get("profile_picture")
+            pic = users[user].get("preferences", {}).get("profile_picture", None)
 
             return (
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
@@ -191,7 +191,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         if user:
             with open(USER_DB, "r") as f:
                 users = json.load(f)
-            pic = users[user]["preferences"].get("profile_picture")
+            pic = users[user].get("preferences", {}).get("profile_picture", None)
 
             return (
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
@@ -209,7 +209,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         if user:
             with open(USER_DB, "r") as f:
                 users = json.load(f)
-            pic = users[user]["preferences"].get("profile_picture")
+            pic = users[user].get("preferences", {}).get("profile_picture", None)
 
             return (
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
@@ -227,7 +227,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         if user:
             with open(USER_DB, "r") as f:
                 users = json.load(f)
-            pic = users[user]["preferences"].get("profile_picture")
+            pic = users[user].get("preferences", {}).get("profile_picture", None)
 
             return (
                 gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
