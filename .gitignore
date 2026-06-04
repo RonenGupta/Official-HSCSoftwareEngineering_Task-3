@@ -3,3 +3,5 @@ hymenoptera_data/
 venv/
 __pycache__/
 users.json
+.env
+reports/tmp

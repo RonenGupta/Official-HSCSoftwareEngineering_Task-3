@@ -1011,6 +1011,11 @@ class FeatureViz():
             steps = int(steps),
             lr = float(lr),
         )
+            if NOTIFICATIONS_ENABLED:
+                gr.Info("Feature visualization generated successfully!", duration=8)
+            if SOUNDSENABLED:
+                pygame.mixer.music.play()
+            return img
 
         elif mode == "Activation Maps":
             if input_image is None:
@@ -1028,14 +1033,11 @@ class FeatureViz():
             activations = mm.get_activation_maps(mm.model, layer_name, img_tensor)
             grid_img = mm.activation_grid(activations)
 
+            if NOTIFICATIONS_ENABLED:
+                gr.Info("Activation map generated successfully!", duration=8)
+            if SOUNDSENABLED:
+                pygame.mixer.music.play()
             return grid_img
-
-        if NOTIFICATIONS_ENABLED:
-            gr.Info("Feature visualization generated successfully!", duration=8)
-        if SOUNDSENABLED:
-            pygame.mixer.music.play()
-
-        return img
     
     def update_visibility(self, mode):
         if mode == "Channel Visualization":
