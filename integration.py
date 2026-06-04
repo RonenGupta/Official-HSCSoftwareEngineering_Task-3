@@ -333,6 +333,23 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         app_state_dict["current_tab"] = "dashboard"
         app_state_dict["user"] = user
 
+        if not user:
+            gr.Info("Please enter a valid username", duration=6)
+
+            return (
+            gr.update(elem_classes="animate__animated animate__fadeInLeft"),   
+            gr.update(elem_classes="hidden-tab"),  
+            gr.update(elem_classes="hidden-tab"),  
+            gr.update(elem_classes="hidden-tab"),  
+            gr.update(elem_classes="hidden-tab"),  
+            gr.update(elem_classes="hidden-tab"),  
+            gr.update(elem_classes="hidden-tab"),  
+            "", "", "", "", "",                    
+            gr.update(value=None),                 
+            *[gr.update(visible=False) for _ in dashboard.get_card_components()],
+            app_state_dict
+        )
+
         if user:
             welcome, count, last_model, last_acc, last_time, models = dashboard.load_dashboard(user)
             card_updates = dashboard.build_model_cards(models)
@@ -357,7 +374,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
                 *card_updates,
                 app_state_dict
             )
-        return show_login(status, user)
+        return show_login(status, user, app_state_dict)
 
     def show_train(status, user, app_state_dict):
         app_state_dict["current_tab"] = "train"

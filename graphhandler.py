@@ -66,12 +66,12 @@ class GraphManager():
         return fig
     
     def rebuild_confusion_matrix(self, stored, class_names):
-        stored = np.array(stored)
-        cm = np.zeros((2, 2), dtype=int)
+        labels, preds = stored
+        labels = np.array(labels, dtype=int)
+        preds = np.array(preds, dtype=int)
 
-        for true_class in [0, 1]:
-            for pred in stored[true_class]:
-                cm[true_class][pred] += 1
+        num_classes = len(class_names)
+        cm = confusion_matrix(labels, preds, labels=list(range(num_classes)))
 
         fig, ax = plt.subplots(figsize=(6, 6))
         disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_names)

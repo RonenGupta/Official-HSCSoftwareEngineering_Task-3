@@ -262,6 +262,9 @@ class Dashboard():
         
         data = users[username]["models"][model_name]
 
+        if data.get("confusion_matrix") is None or data.get("class_names") is None:
+            return gr.Info("You must test this model before generating a PDF report.")
+
         os.makedirs("reports", exist_ok=True)
         path = f"reports/{username}_{model_name}.pdf"
         tmp_path = f"reports/tmp"
@@ -722,18 +725,23 @@ class LoginSignUp():
         users = self.load_users()
 
         if not self.validate_email(email):
+            gr.Info("Invalid email format")
             return "Invalid email format"
-        
+            
         if not username or len(username) < 3:
+            gr.Info("Username must be at least 3 characters")
             return "Username must be at least 3 characters"
 
         if not self.validate_password(password):
+            gr.Info("Password must be 8+ characters with letters and numbers")
             return "Password must be 8+ characters with letters and numbers"
         
         if password != confirm:
+            gr.Info("Passwords do not match")
             return "Passwords do not match"
         
         if self.find_user(users, username):
+            gr.Info("Username already exists")
             return "Username already exists"
         
         users[username] = {
@@ -769,6 +777,9 @@ class LoginSignUp():
     
     def login_pipeline(self, username, password):
         users = self.load_users()
+
+        if not username or not password:
+            return "Please enter both username and password", None
 
         if self.failed_attempts.get(username, 0) >= 5:
             return "Too many failed attempts. Try again later.", None
@@ -1003,7 +1014,7 @@ class FeatureViz():
         loaded_model = mm.load_model(username, model_name, num_classes)
         mm.model = loaded_model.to(device)
 
-        if mode == "Channel":
+        if mode == "Channel Visualization":
             img = mm.feature_visualization(
             layer_name = str(layer_name),
             channel_idx = int(channel_idx),
