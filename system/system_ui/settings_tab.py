@@ -8,13 +8,7 @@ import pygame
 import time
 import threading
 import shutil
-
 from system.backend_config.config import NOTIFICATIONS_ENABLED, SOUNDSENABLED, CURRENTVOLUME, USER_DB, MUSIC_FOLDER
-
-
-pygame.mixer.init()
-music_path = f"/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/{MUSIC_FOLDER}/LevinIntro.mp3"
-pygame.mixer.music.load(music_path)
 
 mm = ModelManager()
 gm= GraphManager()
@@ -35,8 +29,8 @@ class Settings():
                 label="Select Music Track"
             )
 
-            self.play_btn = gr.Button("Play")
-            self.stop_btn = gr.Button("Stop")
+            self.play_btn = gr.Button("Play", elem_id="settings_music_play_btn")
+            self.stop_btn = gr.Button("Stop", elem_id="settings_music_stop_btn")
 
             self.custom_audio_file = gr.Audio(
                 type="filepath", 
@@ -235,6 +229,8 @@ class Settings():
         return [f for f in os.listdir(MUSIC_FOLDER) if f.endswith(".mp3")]
 
     def logout(self):
+        if pygame.mixer.get_init():
+            pygame.mixer.music.stop()
         gr.Info(f"Logging out...", duration=3)
         return None
 

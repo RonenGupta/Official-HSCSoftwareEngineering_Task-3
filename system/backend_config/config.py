@@ -1,11 +1,11 @@
 import torch
 
 NOTIFICATIONS_ENABLED = True
-SOUNDSENABLED = False
+SOUNDSENABLED = True
 CURRENTVOLUME = 0.5
 
 USER_DB = "users.json"
-MUSIC_FOLDER = "music"
+MUSIC_FOLDER = "static/music"
 
 if torch.cuda.is_available():
     device = torch.device("cuda")

@@ -1,6 +1,7 @@
 import gradio as gr
 from pathlib import Path
 import json
+import pygame
 from system.system_ui.assistant_acc import MyCNN_Assistant
 from system.system_ui.dashboard_tab import Dashboard
 from system.system_ui.train_tab import Train_Tab
@@ -9,166 +10,14 @@ from system.system_ui.gradcam_tab import GradCAM
 from system.system_ui.featureviz_activationmap_tab import FeatureViz
 from system.system_ui.login_signup_tab import LoginSignUp
 from system.system_ui.settings_tab import Settings
+from system.backend_config.config import MUSIC_FOLDER
+
+pygame.mixer.init()
+pygame.mixer.music.set_volume(0.5)
 
 USER_DB = 'users.json'
 
-css = """
-@import url('https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css');
-
-.spaced-row {
-    gap: 24px !important;
-}
-
-body, .gradio-container {
-    background: transparent !important;   
-    min-height: 100vh !important;   
-    padding: 20px !important;
-}
-
-.gradio-container {
-    position: relative; !important;
-}
-
-.gradio-container,
-div[class*="gr-"],
-div[class*="svelte-"],
-.tabs,
-.tab-nav,
-.tabitem,
-.form,
-.gap,
-.block,
-fieldset,
-.g-row,
-.g-col,
-div.row,
-div.column {
-    background-color: #ffffff !important;
-    background: #ffffff !important;
-    border-color: #ffffff !important;
-}
-
-div.row:has(> .gr-markdown),
-.block p,
-div.row p {
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-}
-
-.models-section {
-    margin-top: 32px !important; 
-    margin-bottom: 32px !important;
-}
-
-.gr-markdown {
-    margin-top: 20px !important;
-    margin-bottom: 20px !important;
-}
-
-h1, h2, h3, .gradio-container h1, .gradio-container h2, .gradio-container h3 {
-    color: #ff9800 !important; 
-    font-weight: 700 !important;
-}
-
-.block, 
-fieldset, 
-.accordion, 
-details, 
-input, 
-textarea, 
-select {
-    border: 1px solid #e2e8f0 !important; 
-    border-radius: 12px !important; 
-}
-
-.tab-nav {
-    border-bottom: 2px solid #e2e8f0 !important;
-    margin-bottom: 12px !important;
-}
-
-.fixed-width-container, 
-.fixed-width-container .gradio-audio,
-.fixed-width-container audio {
-    max-width: 450px !important; 
-    width: 100% !important;
-    overflow-x: hidden !important;
-}
-
-.hidden-tab {
-    display: none !important;
-}
-
-@keyframes flip {
-    0% {
-    transform: rotateY(0deg);
-    }
-    100% {
-    transform: rotateY(180deg);
-    }
-}
-
-@keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {
-    transform: translateY(0);
-    animation-timing-function: cubic-bezier(0.215 0.610, 0.355, 1.00);
-    }
-
-    40%, 43% {
-    transform: translateY(-30px);
-    animation-timing-function: cubic-bezier(0.755 0.050, 0.855, 0.060);
-    }
-
-    70% {
-    transform: translateY(-15px);
-    animation-timing-function: cubic-bezier(0.755 0.050, 0.855, 0.060);
-    }
-
-    90% {
-    transform: translateY(-4px);
-   }
-}
-
-#profile-pic {
-    width: 60px !important;
-    height: 60px !important;
-    border-radius: 50% !important;
-    object-fit: cover !important;
-    position: relative;
-    top: 0;
-    right: 0;
-    z-index: 1;
-    animation: flip 2s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate ;
-    transform-style: preserve-3d;
-}
-
-#profile-pic img {
-    border-radius: 50%; !important;
-    object-fit: cover; !important;
-}
-
-#chat-panel {
-    top: 0;
-    right: 0;
-    width: 350px;
-    height: 100vh;
-    background: white;
-    border-left: 2px solid #e2e8f0;
-    padding: 10px;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-}
-
-#global-chat {
-    flex: 1;
-    overflow-y: auto;
-}
-
-#global-chat-input {
-    margin-top: 10px;
-}
-"""
+css_path = Path("static/styles.css").read_text()
 
 gr.set_static_paths(paths=[Path.cwd() / "static"])
 
@@ -207,7 +56,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             inputs=[assistant_msg, assistant_chatbot, app_state],
             outputs=[assistant_msg, assistant_chatbot]
         )
-        
+
     def show_login(status, user, app_state_dict):
         app_state_dict["current_tab"] = "login"
         app_state_dict["user"] = user
@@ -470,4 +319,4 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             )
 
 if __name__ == "__main__":
-    demo.launch(css=css, theme=gr.themes.Citrus(), footer_links=[], allowed_paths=["."])
+    demo.launch(css=css_path, theme=gr.themes.Citrus(), footer_links=[], allowed_paths=["."])

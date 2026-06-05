@@ -12,20 +12,8 @@ from system.backend_config.config import NOTIFICATIONS_ENABLED, SOUNDSENABLED, U
 USER_DB = "users.json"
 
 pygame.mixer.init()
-music_path = f"/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/{MUSIC_FOLDER}/LevinIntro.mp3"
+music_path = f"/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/{MUSIC_FOLDER}/ping.mp3"
 pygame.mixer.music.load(music_path)
-
-mm = ModelManager()
-gm= GraphManager()
-pm = ProfileManager()
-
-pygame.mixer.init()
-music_path = "/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/music/LevinIntro.mp3"
-pygame.mixer.music.load(music_path)
-
-NOTIFICATIONS_ENABLED = True
-SOUNDSENABLED = True
-CURRENTVOLUME = 0.5
 
 mm = ModelManager()
 gm= GraphManager()

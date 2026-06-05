@@ -11,8 +11,8 @@ import pygame
 from system.backend_config.config import NOTIFICATIONS_ENABLED, SOUNDSENABLED, USER_DB, MUSIC_FOLDER
 
 pygame.mixer.init()
-music_path = f"/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/{MUSIC_FOLDER}/LevinIntro.mp3"
-pygame.mixer.music.load(music_path)
+notification_sound = os.path.join(MUSIC_FOLDER, "ping.mp3")
+pygame.mixer.music.load(notification_sound)
 
 mm = ModelManager()
 gm= GraphManager()
@@ -28,7 +28,7 @@ class LoginSignUp():
                     gr.Markdown("Login / Sign Up")
                     self.login_username = gr.Textbox(label="Username")
                     self.login_password = gr.Textbox(label="Password")
-                    self.login_btn = gr.Button("Login")
+                    self.login_btn = gr.Button("Login", elem_id="auth_login_btn")
                     self.login_status = gr.Textbox(label="Status", interactive=False)
                 with gr.Group():
                     gr.Markdown("Sign Up")
@@ -146,6 +146,7 @@ class LoginSignUp():
         if NOTIFICATIONS_ENABLED:
             gr.Info("Sign Up completed successfully!", duration=8)
         if SOUNDSENABLED:
+            pygame.mixer.music.load(notification_sound)
             pygame.mixer.music.play()
 
         return "Account created!"
@@ -174,6 +175,7 @@ class LoginSignUp():
         if NOTIFICATIONS_ENABLED:
             gr.Info("Log In completed successfully!", duration=5)
         if SOUNDSENABLED:
+            pygame.mixer.music.load(notification_sound)
             pygame.mixer.music.play()
         return f"Welcome {real_user}!", real_user
     
