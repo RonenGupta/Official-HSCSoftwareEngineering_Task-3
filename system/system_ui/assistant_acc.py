@@ -1,6 +1,9 @@
 import gradio as gr
 import os
 import json
+from gtts import gTTS
+import base64
+import io
 from groq import Groq
 
 api_key = os.getenv("api_key")
@@ -12,14 +15,25 @@ class MyCNN_Assistant():
         pass
 
     def build_ui(self):
-        with gr.Column(scale=4, elem_id="chat-panel"):
-                with gr.Accordion("MyCNN Assistant"):
+        with gr.Column(scale=4, elem_id="chat-panel") as chat_panel:
+                with gr.Accordion("MyCNN Assistant") as acc:
                     global_chatbot = gr.Chatbot(elem_id="global-chat")
                     msg = gr.Textbox(label="Your message", elem_id="global-chat-input")
-        return global_chatbot, msg
-    
+                    audio_out = gr.Audio(autoplay=True, elem_id="assistant-audio")
+        return chat_panel, acc, global_chatbot, msg, audio_out
+
     def clean_history(self, history):
         return [{"role": m["role"], "content": m["content"]} for m in history]
+    
+    def speak(self, text):
+         from system.backend_config.config import SOUNDSENABLED
+         if SOUNDSENABLED:
+            tts = gTTS(text, tld="co.in", lang="en")
+            buf = io.BytesIO()
+            tts.write_to_fp(buf)
+            buf.seek(0)
+            return buf.read()
+         return None
     
     def respond(self, message, chat_history, app_state):
         chat_history = chat_history or []
@@ -28,7 +42,8 @@ class MyCNN_Assistant():
         if app_state["user"] is None:
             assistant_msg = "Please log in to use the assistant."
             chat_history.append({"role": "assistant", "content": assistant_msg})
-            return "", chat_history
+            audio = self.speak(assistant_msg)
+            return "", audio, chat_history
 
         system_context = {
             "current_tab": app_state["current_tab"],
@@ -112,4 +127,5 @@ class MyCNN_Assistant():
 
         chat_history.append({"role": "assistant", "content": assistant_msg})
 
-        return "", chat_history
+        audio = self.speak(assistant_msg)
+        return "", audio, chat_history

@@ -143,13 +143,32 @@ select {
     z-index: 9999;
     display: flex;
     flex-direction: column;
+    transition: 0.3s ease, opacity 0.3s ease;
+    transform: translateX(0);
+    opacity: 1;
+}
+
+#chat-panel.hidden {
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    padding: 0 !important;
+    border: none !important;
 }
 
 #global-chat {
     flex: 1;
     overflow-y: auto;
+    max-height: 300px;
 }
 
 #global-chat-input {
     margin-top: 10px;
+}
+
+#assistant-audio {
+    display: none !important;
 }

@@ -30,6 +30,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
     "model_status": None,
     "dashboard_info": {}
     })
+    assistant_state = gr.State(True)
 
     with gr.Row():
         with gr.Column(scale=8):
@@ -49,12 +50,12 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
                 featureviz = FeatureViz(login.current_user)
 
         cnn_assistant = MyCNN_Assistant()
-        assistant_chatbot, assistant_msg = cnn_assistant.build_ui()
+        chat_panel, acc, assistant_chatbot, assistant_msg, audio_out = cnn_assistant.build_ui()
 
         assistant_msg.submit(
             fn=cnn_assistant.respond,
             inputs=[assistant_msg, assistant_chatbot, app_state],
-            outputs=[assistant_msg, assistant_chatbot]
+            outputs=[assistant_msg, audio_out, assistant_chatbot]
         )
 
     def show_login(status, user, app_state_dict):
@@ -253,6 +254,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             featureviz_button = gr.Button("FeatureViz")
             settings_button = gr.Button("Settings", variant="secondary")
             global_profile_pic = gr.Image(label=None, show_label=False, interactive=False, buttons=[], elem_id = "profile-pic")
+            toggle_assistant = gr.Button("Toggle Assistant", variant="outline")
 
             login_button.click(
                 fn=show_login,
@@ -316,6 +318,15 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
                 fn=settings.close_app,
                 inputs=[],
                 outputs=[]
+            )
+
+            toggle_assistant.click(
+                fn=lambda visible: (
+                    gr.update(elem_classes = "hidden" if visible else ""),
+                    not visible
+                ),
+                inputs=[assistant_state],
+                outputs=[chat_panel, assistant_state]
             )
 
 if __name__ == "__main__":
