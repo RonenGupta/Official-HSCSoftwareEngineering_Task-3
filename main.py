@@ -72,6 +72,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         app_state_dict["user"] = user
 
         if not user:
+            gr.Warning("Please login before accessing other tabs.", duration=6)
             return (
             *[gr.update(elem_classes="animate__animated animate__fadeInLeft")   
             if i == 0 else gr.update(elem_classes="hidden-tab")
@@ -112,7 +113,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         app_state_dict["user"] = user
 
         if not user:
-            gr.Info("Please enter a valid username", duration=6)
+            gr.Warning("Please login before accessing other tabs.", duration=6)
 
             return (
                 *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
@@ -145,7 +146,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         app_state_dict["user"] = user
 
         if not user:
-            gr.Info("Please enter a valid username", duration=6)
+            gr.Warning("Please login before accessing other tabs.", duration=6)
 
             return (
             *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
@@ -175,7 +176,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         app_state_dict["current_tab"] = "gradcam"
         app_state_dict["user"] = user
         if not user:
-            gr.Info("Please enter a valid username", duration=6)
+            gr.Warning("Please login before accessing other tabs.", duration=6)
 
             return (
             *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
@@ -202,7 +203,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         app_state_dict["current_tab"] = "featureviz"
         app_state_dict["user"] = user
         if not user:
-            gr.Info("Please enter a valid username", duration=6)
+            gr.Warning("Please login before accessing other tabs.", duration=6)
 
             return (
             *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
