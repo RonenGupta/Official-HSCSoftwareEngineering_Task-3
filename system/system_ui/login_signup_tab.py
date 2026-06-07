@@ -53,7 +53,7 @@ class LoginSignUp():
             with open(USER_DB, "r") as f:
                 return json.load(f)
         except Exception as e:
-            return f"Exception: {e}"
+            raise RuntimeWarning(f"Failed to load users: {e}")
         
     @staticmethod
     def save_users(users):
@@ -61,21 +61,21 @@ class LoginSignUp():
             with open(USER_DB, "w") as f:
                 json.dump(users, f, indent=4)
         except Exception as e:
-            return f"Exception: {e}"
+            raise RuntimeWarning(f"Failed to save users: {e}")
 
     @staticmethod
     def hash_password(password: str):
         try:
             return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
         except Exception as e:
-            return f"Exception: {e}"
+            raise RuntimeWarning(f"Password hashing failed: {e}")
 
     @staticmethod
     def check_password(password: str, hashed: str):
         try:
             return bcrypt.checkpw(password.encode(), hashed.encode())
         except Exception as e:
-            return f"Exception: {e}"
+            raise RuntimeWarning(f"Password check failed: {e}")
     
     @staticmethod
     def validate_email(email):
@@ -97,86 +97,90 @@ class LoginSignUp():
         return None
 
     def signup_pipeline(self, email, username, password, confirm):
-        users = self.load_users()
+        try:
+            users = self.load_users()
 
-        if not self.validate_email(email):
-            gr.Info("Invalid email format")
-            return "Invalid email format"
+            if not self.validate_email(email):
+                return gr.Warning("Invalid email format")
+                
+            if not username or len(username) < 3:
+                return gr.Warning("Username must be at least 3 characters")
+
+            if not self.validate_password(password):
+                return gr.Warning("Password must be 8+ characters with letters and numbers")
             
-        if not username or len(username) < 3:
-            gr.Info("Username must be at least 3 characters")
-            return "Username must be at least 3 characters"
+            if password != confirm:
+                return gr.Warning("Passwords do not match")
+            
+            if self.find_user(users, username):
+                return gr.Warning("Username already exists")
+            
+            users[username] = {
+                "email": email,
+                "password": self.hash_password(password),
+                "models": {},
+                "join_date": str(datetime.datetime.now()),
+                "preferences": {
+                    "default_architecture": "ResNet18",
+                    "default_learning_rate": 0.001,
+                    "default_epochs": 10,
+                    "default_batch_size": 32,
+                    "default_dropout": 0.2,
 
-        if not self.validate_password(password):
-            gr.Info("Password must be 8+ characters with letters and numbers")
-            return "Password must be 8+ characters with letters and numbers"
+                    "default_activation_layer": "layer4",
+                    "default_featureviz_layer": "layer4",
+                    "default_featureviz_channel": 0,
+
+                    "notifications": True,
+                    "sound": True,
+                    "profile_picture": None
+                    }
+            }
+
+            self.save_users(users)
+
+            if NOTIFICATIONS_ENABLED:
+                gr.Info("Sign Up completed successfully!", duration=8)
+            if SOUNDSENABLED:
+                pygame.mixer.music.load(notification_sound)
+                pygame.mixer.music.play()
+
+            return "Account created sucessfully!", None
         
-        if password != confirm:
-            gr.Info("Passwords do not match")
-            return "Passwords do not match"
+        except Exception as e:
+            return gr.Warning(str(e))
         
-        if self.find_user(users, username):
-            gr.Info("Username already exists")
-            return "Username already exists"
-        
-        users[username] = {
-            "email": email,
-            "password": self.hash_password(password),
-            "models": {},
-            "join_date": str(datetime.datetime.now()),
-            "preferences": {
-                "default_architecture": "ResNet18",
-                "default_learning_rate": 0.001,
-                "default_epochs": 10,
-                "default_batch_size": 32,
-                "default_dropout": 0.2,
-
-                "default_activation_layer": "layer4",
-                "default_featureviz_layer": "layer4",
-                "default_featureviz_channel": 0,
-
-                "notifications": True,
-                "sound": True,
-                "profile_picture": None
-                }
-        }
-
-        self.save_users(users)
-
-        if NOTIFICATIONS_ENABLED:
-            gr.Info("Sign Up completed successfully!", duration=8)
-        if SOUNDSENABLED:
-            pygame.mixer.music.load(notification_sound)
-            pygame.mixer.music.play()
-
-        return "Account created!"
-    
     def login_pipeline(self, username, password):
-        users = self.load_users()
+        try:
+            users = self.load_users()
 
-        if not username or not password:
-            return "Please enter both username and password", None
+            if not username or not password:
+                return gr.Warning("Please enter both username and password"), None
 
-        if self.failed_attempts.get(username, 0) >= 5:
-            return "Too many failed attempts. Try again later.", None
-        
-        real_user = self.find_user(users, username)
-        if not real_user:
-            self.failed_attempts[username] = self.failed_attempts.get(username, 0) + 1
-            return "Invalid username or password", None
-        
-        if not self.check_password(password, users[username]["password"]):
-            self.failed_attempts[username] = self.failed_attempts.get(username, 0) + 1
-            return "Incorrect password", None
-        
-        self.failed_attempts[username] = 0
+            if self.failed_attempts.get(username, 0) >= 5:
+                return gr.Warning("Too many failed attempts. Try again later."), None
+            
+            real_user = self.find_user(users, username)
+            if not real_user:
+                self.failed_attempts[username] = self.failed_attempts.get(username, 0) + 1
+                return gr.Warning("Invalid username or password"), None
+            
+            if not self.check_password(password, users[real_user]["password"]):
+                self.failed_attempts[username] = self.failed_attempts.get(username, 0) + 1
+                return gr.Warning("Incorrect password"), None
+            
+            self.failed_attempts[username] = 0
 
-        users[real_user]["last_login"] = str(datetime.datetime.now())
-        if NOTIFICATIONS_ENABLED:
-            gr.Info("Log In completed successfully!", duration=5)
-        if SOUNDSENABLED:
-            pygame.mixer.music.load(notification_sound)
-            pygame.mixer.music.play()
-        return f"Welcome {real_user}!", real_user
+            users[real_user]["last_login"] = str(datetime.datetime.now())
+            self.save_users(users)
+
+            if NOTIFICATIONS_ENABLED:
+                gr.Info("Log In completed successfully!", duration=5)
+            if SOUNDSENABLED:
+                pygame.mixer.music.load(notification_sound)
+                pygame.mixer.music.play()
+            return f"Welcome {real_user}!", real_user
+        except Exception as e:
+            return gr.Warning(str(e)), None
     
     

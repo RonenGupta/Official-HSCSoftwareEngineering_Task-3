@@ -1,5 +1,4 @@
 import json
-import gradio as gr
 from system.backend_config.config import USER_DB
 
 class ProfileManager():
@@ -8,7 +7,7 @@ class ProfileManager():
 
     def get_preferences(self, username):
 
-        if isinstance(username, gr.State) or hasattr(username, "value"):
+        if hasattr(username, "value"):
             username = username.value
 
         if not username:
@@ -27,20 +26,26 @@ class ProfileManager():
         try:
             with open(USER_DB, "r") as f:
                 users = json.load(f)
-            return users.get(username, {}).get("preferences", {})
-        except Exception:
-            return {}
+            
+            if username not in users:
+                raise ValueError("Username not found.")
+            return users[username].get("preferences", {})
+        except Exception as e:
+            raise RuntimeError(f"Failed to load preferences: {e}")
 
     def update_preference(self, username, key, value):
-        if isinstance(username, gr.State) or hasattr(username, 'value'):
+        if hasattr(username, 'value'):
             username = username.value
         
         if not username:
-            return "No username"
+            raise ValueError("No username provided.")
         
         try:
             with open(USER_DB, "r") as f:
                 users = json.load(f)
+            
+            if username not in users:
+                raise ValueError("User not found.")
             
             if "preferences" not in users[username]:
                 users[username]["preferences"] = {}
@@ -49,6 +54,6 @@ class ProfileManager():
 
             with open(USER_DB, "w") as f:
                 json.dump(users, f, indent=4)
-            return f"{key} updated!"
+            
         except Exception as e:
-            return f"Error: {str(e)}"
+            raise RuntimeError(f"Failed to update preferences: {e}")

@@ -14,6 +14,9 @@ mm = ModelManager()
 gm= GraphManager()
 pm = ProfileManager()
 
+music_path = f"/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/{MUSIC_FOLDER}/ping.mp3"
+pygame.mixer.music.load(music_path)
+
 class Settings():
     def __init__(self, current_user):
         gr.Markdown("# Configure Settings")
@@ -21,22 +24,6 @@ class Settings():
         self.current_user = current_user
         
         prefs = pm.get_preferences(current_user)
-
-        with gr.Group():
-            gr.Markdown("Music Player")
-            self.music_dropdown = gr.Dropdown(
-                choices=self.list_music_files(),
-                label="Select Music Track"
-            )
-
-            self.play_btn = gr.Button("Play", elem_id="settings_music_play_btn")
-            self.stop_btn = gr.Button("Stop", elem_id="settings_music_stop_btn")
-
-            self.custom_audio_file = gr.Audio(
-                type="filepath", 
-                label="Upload & Play Custom Music", 
-                interactive=True
-            )
         
         with gr.Group():
             gr.Markdown("Notifications and Sounds")
@@ -44,11 +31,6 @@ class Settings():
             self.notifications = gr.Checkbox(label="Enable Gradio Notifications", interactive=True, value=prefs.get("notifications", True))
             self.sounds = gr.Checkbox(label="Enable Sound Effects", interactive=True, value=prefs.get("sound", True))
             self.volume_slider = gr.Slider(minimum=0, maximum=100, value=50, step=5, label="Sound Volume (%)", interactive=True)
-
-        with gr.Group():
-            gr.Markdown("Session")
-            self.logout_btn = gr.Button("Log Out")
-            self.close_btn = gr.Button("Close App")
         
         with gr.Group():
             gr.Markdown("Profile Preferences")
@@ -90,7 +72,27 @@ class Settings():
             type="filepath"
             )
             self.save_pic_btn = gr.Button("Save Profile Picture")
+        
+        with gr.Group():
+            gr.Markdown("Music Player")
+            self.music_dropdown = gr.Dropdown(
+                choices=self.list_music_files(),
+                label="Select Music Track"
+            )
 
+            self.play_btn = gr.Button("Play", elem_id="settings_music_play_btn")
+            self.stop_btn = gr.Button("Stop", elem_id="settings_music_stop_btn")
+
+            self.custom_audio_file = gr.Audio(
+                type="filepath", 
+                label="Upload & Play Custom Music", 
+                interactive=True
+            )
+
+        with gr.Group():
+            gr.Markdown("Session")
+            self.logout_btn = gr.Button("Log Out")
+            self.close_btn = gr.Button("Close App")
         
         self.notifications.change(
             fn=self.toggle_notifications,
@@ -158,7 +160,7 @@ class Settings():
         username = current_user_state.value if hasattr(current_user_state, "value") else current_user_state
 
         if not username:
-            return gr.Info("Please log in before saving preferences.")
+            return gr.Warning("Please log in before saving preferences.")
         try:
             pm.update_preference(username, "default_architecture", arch)
             pm.update_preference(username, "default_learning_rate", lr)
@@ -170,16 +172,21 @@ class Settings():
             pm.update_preference(username, "default_featureviz_channel", fv_channel)
             pm.update_preference(username, "notifications", notifications)
             pm.update_preference(username, "sound", sound)
-
-            return gr.Info("Preferences Saved!")
+            if SOUNDSENABLED:
+                pygame.mixer.music.load(music_path)
+                pygame.mixer.music.play()
+                
+            if NOTIFICATIONS_ENABLED:
+                return gr.Info("Preferences Saved!")
+            
         except Exception as e:
-            return gr.Error(f"Failed to save preferences: {str(e)}")
+            return gr.Warning(f"Failed to save preferences: {str(e)}")
     
     def save_profile_picture(self, username, image_path):
         if username is None:
-            return gr.Info("Please log in before uploading an image.")
+            return gr.Warning("Please log in before uploading an image.")
         if image_path is None:
-            return gr.Info("No image uploaded.")
+            return gr.Warning("No image uploaded.")
         
         os.makedirs("static/profile_pics", exist_ok = True)
         save_path = f"static/profile_pics/{username}.png"
@@ -191,19 +198,28 @@ class Settings():
         users[username]["preferences"]["profile_picture"] = save_path
         with open(USER_DB, "w") as f:
             json.dump(users, f, indent=4)
+        if SOUNDSENABLED:
+            pygame.mixer.music.load(music_path)
+            pygame.mixer.music.play()
+
+        if NOTIFICATIONS_ENABLED:
+            return gr.Info("Profile picture updated!")
         
-        return gr.Info("Profile picture updated!")
-    
     def toggle_notifications(self, notifications: bool):
         global NOTIFICATIONS_ENABLED
         NOTIFICATIONS_ENABLED = notifications
-        return gr.Info(f"Notifications {'enabled' if notifications else 'disabled'}", duration=2)
+        if NOTIFICATIONS_ENABLED:
+            return gr.Info(f"Notifications {'enabled' if notifications else 'disabled'}", duration=2)
+        if SOUNDSENABLED:
+            pygame.mixer.music.load(music_path)
+            pygame.mixer.music.play()
     
     def toggle_sounds(self, sounds: bool):
         global SOUNDSENABLED
         SOUNDSENABLED = sounds
-        return gr.Info(f"Sound effects {'enabled' if SOUNDSENABLED else 'disabled'}", duration = 2)
-
+        if NOTIFICATIONS_ENABLED:
+            return gr.Info(f"Sound effects {'enabled' if SOUNDSENABLED else 'disabled'}", duration = 2)
+        
     def update_volume(self, volume: float):
         global CURRENTVOLUME
         CURRENTVOLUME = volume / 100.0
@@ -218,7 +234,7 @@ class Settings():
             pygame.mixer.music.play()
             return gr.Info(f"Playing: {track}")
         except Exception as e:
-            return f"Error: {e}"
+            return gr.Warning(str(e))
     
     def stop_music(self):
         pygame.mixer.music.stop()
@@ -231,11 +247,19 @@ class Settings():
     def logout(self):
         if pygame.mixer.get_init():
             pygame.mixer.music.stop()
-        gr.Info(f"Logging out...", duration=3)
+        if NOTIFICATIONS_ENABLED:
+            gr.Info(f"Logging out...", duration=3)
+        if SOUNDSENABLED:
+            pygame.mixer.music.load(music_path)
+            pygame.mixer.music.play()
         return None
 
     def close_app(self):
-        gr.Info(f"Closing application...", duration=3)
+        if NOTIFICATIONS_ENABLED:
+            gr.Info(f"Closing application...", duration=3)
+        if SOUNDSENABLED:
+            pygame.mixer.music.load(music_path)
+            pygame.mixer.music.play()
 
         def kill():
             time.sleep(2)

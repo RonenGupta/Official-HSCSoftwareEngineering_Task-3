@@ -10,7 +10,6 @@ from system.system_ui.gradcam_tab import GradCAM
 from system.system_ui.featureviz_activationmap_tab import FeatureViz
 from system.system_ui.login_signup_tab import LoginSignUp
 from system.system_ui.settings_tab import Settings
-from system.backend_config.config import MUSIC_FOLDER
 
 pygame.mixer.init()
 pygame.mixer.music.set_volume(0.5)
@@ -62,13 +61,9 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         app_state_dict["current_tab"] = "login"
         app_state_dict["user"] = user
         return (
-            gr.update(elem_classes="animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+            *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
+            if i == 0 else gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft")
+            for i in range(7)],
             app_state_dict
         )
 
@@ -77,17 +72,11 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         app_state_dict["user"] = user
 
         if not user:
-            gr.Info("Please enter a valid username", duration=6)
-
             return (
-            gr.update(elem_classes="animate__animated animate__fadeInLeft"),   
-            gr.update(elem_classes="hidden-tab"),  
-            gr.update(elem_classes="hidden-tab"),  
-            gr.update(elem_classes="hidden-tab"),  
-            gr.update(elem_classes="hidden-tab"),  
-            gr.update(elem_classes="hidden-tab"),  
-            gr.update(elem_classes="hidden-tab"),  
-            "", "", "", "", "",                    
+            *[gr.update(elem_classes="animate__animated animate__fadeInLeft")   
+            if i == 0 else gr.update(elem_classes="hidden-tab")
+            for i in range(7)],  
+            *["", "", "", "", ""],                    
             gr.update(value=None),                 
             *[gr.update(visible=False) for _ in dashboard.get_card_components()],
             app_state_dict
@@ -96,18 +85,17 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         if user:
             welcome, count, last_model, last_acc, last_time, models = dashboard.load_dashboard(user)
             card_updates = dashboard.build_model_cards(models)
-            with open(USER_DB, "r") as f:
-                users = json.load(f)
-                pic = users[user].get("preferences", {}).get("profile_picture", None)
+            try:
+                with open(USER_DB, "r") as f:
+                    users = json.load(f)
+            except Exception:
+                return gr.Warning("User database is corrupted. Please reset users.json.")
+            pic = users[user].get("preferences", {}).get("profile_picture", None)
 
             return (
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
+                if i == 1 else gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft")
+                for i in range(7)],
                 welcome,
                 count,
                 last_model,
@@ -122,6 +110,19 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
     def show_train(status, user, app_state_dict):
         app_state_dict["current_tab"] = "train"
         app_state_dict["user"] = user
+
+        if not user:
+            gr.Info("Please enter a valid username", duration=6)
+
+            return (
+                *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
+                if i == 0 else gr.update(elem_classes="hidden-tab")
+                for i in range(7)],
+                *[gr.update(value=None)
+                for i in range(10)],
+                app_state_dict
+        )
+
         if user:
             with open(USER_DB, "r") as f:
                 users = json.load(f)
@@ -129,13 +130,9 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             pref_updates = train.refresh_preferences(user)
 
             return (
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
+                  if i == 2 else gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft")
+                  for i in range(7)],
                 gr.update(value=pic),
                 *pref_updates,
                 app_state_dict
@@ -146,6 +143,18 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
     def show_test(status, user, app_state_dict):
         app_state_dict["current_tab"] = "test"
         app_state_dict["user"] = user
+
+        if not user:
+            gr.Info("Please enter a valid username", duration=6)
+
+            return (
+            *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
+              if i == 0 else gr.update(elem_classes="hidden-tab")
+              for i in range(7)],
+              gr.update(value=None),
+              gr.update(value=None),
+              app_state_dict
+        )
         if user:
             with open(USER_DB, "r") as f:
                 users = json.load(f)
@@ -153,13 +162,9 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             pref_updates = test.refresh_preferences(user)
 
             return (
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
+                  if i == 3 else gr.update(elem_classes="hidden-tab")
+                  for i in range(7)],
                 gr.update(value=pic),
                 *pref_updates,
                 app_state_dict
@@ -169,19 +174,25 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
     def show_gradcam(status, user, app_state_dict):
         app_state_dict["current_tab"] = "gradcam"
         app_state_dict["user"] = user
+        if not user:
+            gr.Info("Please enter a valid username", duration=6)
+
+            return (
+            *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
+              if i == 0 else gr.update(elem_classes="hidden-tab")
+              for i in range(7)],
+            gr.update(value=None),
+            app_state_dict
+        )
         if user:
             with open(USER_DB, "r") as f:
                 users = json.load(f)
             pic = users[user].get("preferences", {}).get("profile_picture", None)
 
             return (
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
+                if i == 4 else gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft")
+                for i in range(7)],
                 gr.update(value=pic),
                 app_state_dict
             )
@@ -190,6 +201,17 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
     def show_featureviz(status, user, app_state_dict):
         app_state_dict["current_tab"] = "featureviz"
         app_state_dict["user"] = user
+        if not user:
+            gr.Info("Please enter a valid username", duration=6)
+
+            return (
+            *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
+            if i == 0 else gr.update(elem_classes="hidden-tab")
+            for i in range(7)],
+            *[gr.update(value=None)
+            for i in range(3)],
+            app_state_dict
+        )
         if user:
             with open(USER_DB, "r") as f:
                 users = json.load(f)
@@ -197,13 +219,9 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             pref_updates = featureviz.refresh_preferences(user)
 
             return (
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="animate__animated animate__fadeInLeft"),
-                gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
+                *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
+                if i == 5 else gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft")
+                for i in range(7)],
                 gr.update(value=pic),
                 *pref_updates,
                 app_state_dict
@@ -212,25 +230,17 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
     
     def show_settings(status, user, app_state_dict):
         return (
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft"),
-            gr.update(elem_classes="animate__animated animate__fadeInLeft"),
+            *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
+            if i == 6 else gr.update(elem_classes="hidden-tab animate__animated animate__fadeInLeft")
+            for i in range(7)],
             app_state_dict
         )
     
     def logout():
         return (
-            gr.update(elem_classes="animate__animated animate__fadeInLeft"), 
-            gr.update(elem_classes="hidden-tab"), 
-            gr.update(elem_classes="hidden-tab"),
-            gr.update(elem_classes="hidden-tab"),  
-            gr.update(elem_classes="hidden-tab"), 
-            gr.update(elem_classes="hidden-tab"),
-            gr.update(elem_classes="hidden-tab"), 
+            *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
+            if i == 0 else gr.update(elem_classes="hidden-tab") 
+            for i in range(7)],
             None  
         )
         

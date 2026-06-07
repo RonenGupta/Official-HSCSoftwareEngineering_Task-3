@@ -4,7 +4,8 @@ from system.system_functions.securityhandler import SecurityManager
 from system.system_functions.graphhandler import GraphManager
 from system.system_functions.profilehandler import ProfileManager
 from torchvision import transforms
-import torch
+from system.backend_config.config import USER_DB
+import json
 import os
 import pygame
 from system.backend_config.config import NOTIFICATIONS_ENABLED, SOUNDSENABLED, MUSIC_FOLDER
@@ -111,120 +112,139 @@ class Train_Tab():
             outputs=[self.save_status])
             
     def train_pipeline(self, train_folder, epochs, lr, bs, layer1, layer2, layer3, layer4, selected_transforms, earlystopping, patience, arch_type, dropout):
-        
-        self.arch_type = arch_type
-        path = train_folder.name if hasattr(train_folder, "name") else train_folder
-
-        final_transforms = []
-
-        if "Resize(256, 256)" in selected_transforms:
-            final_transforms.append(transforms.Resize((224, 224)))
-        
-        if "CenterCrop(224)" in selected_transforms:
-            final_transforms.append(transforms.CenterCrop(224))
-        
-        if "RandomResizedCrop(224)" in selected_transforms:
-            final_transforms.append(transforms.RandomResizedCrop(224, 
-                                                                scale=(0.6, 1.0)))
-        
-        if "RandomHorizontalFlip" in selected_transforms:
-            final_transforms.append(transforms.RandomHorizontalFlip(0.5))
-
-        if "RandomVerticalFlip" in selected_transforms:
-            final_transforms.append(transforms.RandomVerticalFlip(0.5))
-        
-        if "RandomRotation" in selected_transforms:
-            final_transforms.append(transforms.RandomRotation(360))
-
-        if "ColorJitter" in selected_transforms:
-            final_transforms.append(transforms.ColorJitter(brightness=0.5, 
-                                                           contrast=0.5, 
-                                                           saturation=0.5, 
-                                                           hue=0.1
-                                                          ))
-        if "RandomAffine" in selected_transforms:
-            final_transforms.append(transforms.RandomAffine(degrees=(-15, 15),     
-                                                            translate=(0.1, 0.1),  
-                                                            scale=(0.9, 1.1),      
-                                                            shear=(-5, 5),         
-                                                            fill=0                
-                                                            ))
-
-        if "ToTensor" in selected_transforms:
-            final_transforms.append(transforms.ToTensor())
-        
-        if "Normalize" in selected_transforms:
-            final_transforms.append(transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                        std=[0.229, 0.224, 0.225]))
-            
-        if not final_transforms:
-            train_transforms = None
-        else:
-            train_transforms = transforms.Compose(final_transforms)
-
-        if not SecurityManager(path).validate_path():
-            return "Invalid training folder", None
-        
-        train_path = os.path.join(path, "train")
-        mm.train_transforms_dataset(train_transforms, train_path, bs)
-        mm.build(arch_type, layer1, layer2, layer3, layer4, dropout)
-
-        gen =  mm.train(earlystopping, patience, epochs, lr)
-
         try:
+            path = train_folder.name if hasattr(train_folder, "name") else train_folder
+
+            if not path:
+                return gr.Warning("Please enter a training folder path."), None, None, None, None, None
+            
+            if epochs is None or epochs <= 0:
+                return gr.Warning("Epochs must be a positive integer."), None, None, None, None, None
+            
+            if lr is None or lr <= 0:
+                return gr.Warning("Learning rate must be a positive number."), None, None, None, None, None
+            
+            if bs is None or bs <= 0:
+                return gr.Warning("Batch size must be a positive number."), None, None, None, None, None
+            
+            if dropout is None or dropout < 0 or dropout > 1:
+                return gr.Warning("Dropout must be between 0 and 1."), None, None, None, None, None
+            
+            if patience is None or patience <= 0:
+                return gr.Warning("Patience must be a positive integer.")
+
+            SecurityManager(path).validate_path()
+
+            if not selected_transforms or len(selected_transforms) == 0:
+                train_transforms = None
+            else:
+                final_transforms = []
+            
+                final_transforms.append(transforms.Resize(256))
+                final_transforms.append(transforms.CenterCrop(256))
+                
+                if "RandomResizedCrop(224)" in selected_transforms:
+                    final_transforms.append(transforms.RandomResizedCrop(224, 
+                                                                        scale=(0.6, 1.0)))
+                
+                if "RandomHorizontalFlip" in selected_transforms:
+                    final_transforms.append(transforms.RandomHorizontalFlip(0.5))
+
+                if "RandomVerticalFlip" in selected_transforms:
+                    final_transforms.append(transforms.RandomVerticalFlip(0.5))
+                
+                if "RandomRotation" in selected_transforms:
+                    final_transforms.append(transforms.RandomRotation(360))
+
+                if "ColorJitter" in selected_transforms:
+                    final_transforms.append(transforms.ColorJitter(brightness=0.5, 
+                                                                contrast=0.5, 
+                                                                saturation=0.5, 
+                                                                hue=0.1
+                                                                ))
+                if "RandomAffine" in selected_transforms:
+                    final_transforms.append(transforms.RandomAffine(degrees=(-15, 15),     
+                                                                    translate=(0.1, 0.1),  
+                                                                    scale=(0.9, 1.1),      
+                                                                    shear=(-5, 5),         
+                                                                    fill=0                
+                                                                    ))
+
+            
+                final_transforms.append(transforms.ToTensor())
+                final_transforms.append(
+                    transforms.Normalize(
+                        mean=[0.485, 0.456, 0.406],
+                        std=[0.229, 0.224, 0.225],
+                    )
+                )
+                train_transforms = transforms.Compose(final_transforms)
+            
+            train_path = os.path.join(path, "train")
+            mm.train_transforms_dataset(train_transforms, train_path, bs)
+            mm.build(arch_type, layer1, layer2, layer3, layer4, dropout)
+            gen =  mm.train(earlystopping, patience, epochs, lr)
 
             while True:
-                log, losses, accuracies, analytics = next(gen)
-                self.gpu_history.append(analytics["gpu"]["load"] if analytics["gpu"] else 0)
-                self.cpu_history.append(analytics["cpu"])
-                self.ram_history.append(analytics["ram"])
-                fig = gm.update_loss(losses, len(losses))
-                acc_fig = gm.update_accuracy(accuracies, len(accuracies))
-                gpu_fig = gm.update_gpu_plot(self.gpu_history)
-                cpu_ram_fig = gm.update_cpu_ram_plot(self.cpu_history, self.ram_history)
+                try:
+                    log, losses, accuracies, analytics = next(gen)
+                    self.gpu_history.append(analytics["gpu"]["load"] if analytics["gpu"] else 0)
+                    self.cpu_history.append(analytics["cpu"])
+                    self.ram_history.append(analytics["ram"])
+                    fig = gm.update_loss(losses, len(losses))
+                    acc_fig = gm.update_accuracy(accuracies, len(accuracies))
+                    gpu_fig = gm.update_gpu_plot(self.gpu_history)
+                    cpu_ram_fig = gm.update_cpu_ram_plot(self.cpu_history, self.ram_history)
 
-                yield log, fig, acc_fig, gpu_fig, cpu_ram_fig, analytics
+                    yield log, fig, acc_fig, gpu_fig, cpu_ram_fig, analytics
 
-        except StopIteration as e:
-            losses, accuracies = e.value
-            self.gpu_history.append(analytics["gpu"]["load"] if analytics["gpu"] else 0)
-            self.cpu_history.append(analytics["cpu"])
-            self.ram_history.append(analytics["ram"])
-            fig = gm.update_loss(losses, epochs)
-            acc_fig = gm.update_accuracy(accuracies, epochs)
-            gpu_fig = gm.update_gpu_plot(self.gpu_history)
-            cpu_ram_fig = gm.update_cpu_ram_plot(self.cpu_history, self.ram_history)
+                except StopIteration as e:
+                    losses, accuracies = e.value
+                    fig = gm.update_loss(losses, epochs)
+                    acc_fig = gm.update_accuracy(accuracies, epochs)
+                    gpu_fig = gm.update_gpu_plot(self.gpu_history)
+                    cpu_ram_fig = gm.update_cpu_ram_plot(self.cpu_history, self.ram_history)
 
-            yield log, fig, acc_fig, gpu_fig, cpu_ram_fig, analytics
+                    if NOTIFICATIONS_ENABLED:
+                        gr.Info("Training completed successfully!", duration=8)
+                    if SOUNDSENABLED:
+                        pygame.mixer.music.play()
 
-            self.losses = losses
-            self.accuracies = accuracies
+                    self.trained_model = mm.model
+                    self.final_accuracy.value = accuracies[-1]
+                    self.final_loss.value = losses[-1]
+                    self.final_epochs.value = len(losses)
 
+                    self.losses = losses
+                    self.accuracies = accuracies
+                    self.arch_type = arch_type
+
+                    yield log, fig, acc_fig, gpu_fig, cpu_ram_fig, analytics
+                    break
+
+        except Exception as e:
+            yield gr.Warning(str(e)), None, None, None, None, None
+
+    def save_model(self, user, model_name, accuracy, loss, epochs):
+        try:
+            if not hasattr(self, "trained_model"):
+                return gr.Warning("No model to train")
+            
+            if not model_name:
+                return gr.Warning("Must pass model name")
+            with open(USER_DB, "r") as f:
+                users = json.load(f)
+            if model_name in users[user]["models"]:
+                return gr.Warning(f"A model named '{model_name} already exists. Choose a different name.")
             if NOTIFICATIONS_ENABLED:
-                gr.Info("Training completed successfully!", duration=8)
-
+                gr.Info("Saving completed successfully!", duration=8)
             if SOUNDSENABLED:
                 pygame.mixer.music.play()
 
-        self.trained_model = mm.model
-        self.final_accuracy.value = accuracies[-1]
-        self.final_loss.value = losses[-1]
-        self.final_epochs.value = len(losses)
-
-    def save_model(self, user, model_name, accuracy, loss, epochs):
-        if not hasattr(self, "trained_model"):
-            return "No model to train"
+            return mm.save_model(self.trained_model, user, model_name, accuracy, loss, epochs, self.losses, self.accuracies, self.arch_type)
         
-        if not model_name:
-            return "Must pass model name"
-        
-        if NOTIFICATIONS_ENABLED:
-            gr.Info("Saving completed successfully!", duration=8)
-
-        if SOUNDSENABLED:
-            pygame.mixer.music.play()
-
-        return mm.save_model(self.trained_model, user, model_name, accuracy, loss, epochs, self.losses, self.accuracies, self.arch_type)
+        except Exception as e:
+            return gr.Warning(str(e))
     
     def refresh_preferences(self, user):
         prefs = pm.get_preferences(user)

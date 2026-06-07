@@ -3,7 +3,10 @@ import torch.nn.functional as F
 import torchvision
 from torchvision import transforms
 from torch.utils.data import DataLoader
+from torchvision.datasets import ImageFolder
+from torch.utils.data import DataLoader
 from torchvision.models import resnet18, ResNet18_Weights, resnet34, ResNet34_Weights, resnet50, ResNet50_Weights, resnet101, ResNet101_Weights, resnet152, ResNet152_Weights
+import gradio as gr
 from PIL import Image
 import numpy as np
 import json
@@ -38,315 +41,362 @@ class ModelManager():
 
     def test(self, model):
         """Testing loop"""
-        loss_fn = torch.nn.CrossEntropyLoss()
-        test_loss = 0
-        test_acc = 0
-        all_preds = []
-        all_labels = []
-        with torch.no_grad():
-            for X, y in self.test_dataloader:
-                X = X.to(device)
-                y = y.to(device)
+        if model is None:
+            raise ValueError("No model loaded for testing.")
+        
+        if not hasattr(self, "test_dataloader"):
+            raise RuntimeError("Test dataloader not initialized.")
+        
+        try:
+            loss_fn = torch.nn.CrossEntropyLoss()
+            test_loss = 0
+            test_acc = 0
+            all_preds = []
+            all_labels = []
+            with torch.no_grad():
+                for X, y in self.test_dataloader:
+                    X = X.to(device)
+                    y = y.to(device)
 
-                y_pred = model(X)
-                _, preds = torch.max(y_pred, 1)
+                    y_pred = model(X)
+                    _, preds = torch.max(y_pred, 1)
 
-                all_preds.extend(preds.cpu().numpy())
-                all_labels.extend(y.cpu().numpy())
+                    all_preds.extend(preds.cpu().numpy())
+                    all_labels.extend(y.cpu().numpy())
 
-                loss = loss_fn(y_pred, y)
+                    loss = loss_fn(y_pred, y)
 
-                test_loss += loss.item()
-                test_acc += accuracy_score(y.cpu().numpy(), y_pred.argmax(dim=1).cpu().numpy())
+                    test_loss += loss.item()
+                    test_acc += accuracy_score(y.cpu().numpy(), y_pred.argmax(dim=1).cpu().numpy())
 
-            avg_test_loss = test_loss / len(self.test_dataloader)
-            avg_test_acc = test_acc / len(self.test_dataloader)
-            test_metrics = f"Test Loss: {avg_test_loss} || Test Accuracy: {avg_test_acc}\n Test Precision: {precision_score(all_labels, all_preds, average='macro')}\nTest Recall: {recall_score(all_labels, all_preds, average='macro')}\nTest F1-Score: {f1_score(all_labels, all_preds, average='macro')}"
+                avg_test_loss = test_loss / len(self.test_dataloader)
+                avg_test_acc = test_acc / len(self.test_dataloader)
+                test_metrics = f"Test Loss: {avg_test_loss} || Test Accuracy: {avg_test_acc}\n Test Precision: {precision_score(all_labels, all_preds, average='macro')}\nTest Recall: {recall_score(all_labels, all_preds, average='macro')}\nTest F1-Score: {f1_score(all_labels, all_preds, average='macro')}"
 
-        return test_metrics, all_labels, all_preds
+            return test_metrics, all_labels, all_preds
+        except Exception as e:
+            raise RuntimeError(f"Testing failed: {str(e)}")
 
     def train(self, earlystopping, patience, epochs: int, lr: float = 0.01):
         """Training loop"""
+        if not hasattr(self, "train_dataloader"):
+            raise RuntimeError("Training dataloader not initialised.")
+        if self.model is None:
+            raise RuntimeError("Model not built before training.")
+        
         log = ""
         param_list = []
 
         for param in self.model.parameters():
             if param.requires_grad:
                 param_list.append(param)
+        try:
+            loss_fn = torch.nn.CrossEntropyLoss()
+            optimizer = torch.optim.Adam(param_list, lr, weight_decay=1e-4)
 
-        loss_fn = torch.nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(param_list, lr)
+            best_loss = float('inf')
+            early_stop_counter = 0
 
-        best_loss = float('inf')
-        early_stop_counter = 0
+            EPOCHS = epochs
+            losses = []
+            accuracies= []
 
-        EPOCHS = epochs
-        losses = []
-        accuracies= []
+            for epoch in range(EPOCHS):
+                train_loss = 0
+                train_acc = 0
+                
+                self.model.train()
+                for X, y in self.train_dataloader:
 
-        for epoch in range(EPOCHS):
-            train_loss = 0
-            train_acc = 0
-            
-            self.model.train()
-            for X, y in self.train_dataloader:
+                    step_start = time.time()
 
-                step_start = time.time()
+                    X = X.to(device)
+                    y = y.to(device)
 
-                X = X.to(device)
-                y = y.to(device)
+                    y_pred = self.model(X)
 
-                y_pred = self.model(X)
+                    loss = loss_fn(y_pred, y)
 
-                loss = loss_fn(y_pred, y)
+                    train_loss += loss.item()
+                    train_acc += accuracy_score(y.cpu().numpy(), y_pred.argmax(dim=1).cpu().numpy())
 
-                train_loss += loss.item()
-                train_acc += accuracy_score(y.cpu().numpy(), y_pred.argmax(dim=1).cpu().numpy())
+                    optimizer.zero_grad()
 
-                optimizer.zero_grad()
+                    loss.backward()
 
-                loss.backward()
+                    optimizer.step()
 
-                optimizer.step()
+                    step_time = time.time() - step_start
+                    iters_per_sec = 1 / step_time
 
-                step_time = time.time() - step_start
-                iters_per_sec = 1 / step_time
+                    cpu, ram = self.get_cpu_ram_usage()
+                    gpu = self.get_gpu_usage()
 
-                cpu, ram = self.get_cpu_ram_usage()
-                gpu = self.get_gpu_usage()
+                    analytics = {
+                        "epoch": epoch + 1,
+                        "step_time": step_time,
+                        "iters_per_sec": iters_per_sec,
+                        "cpu": cpu,
+                        "ram": ram,
+                        "gpu": gpu
+                    }
 
-                analytics = {
-                    "epoch": epoch + 1,
-                    "step_time": step_time,
-                    "iters_per_sec": iters_per_sec,
-                    "cpu": cpu,
-                    "ram": ram,
-                    "gpu": gpu
-                }
+                avg_train_loss = train_loss / len(self.train_dataloader)
+                avg_train_acc = train_acc / len(self.train_dataloader)
+                
+                losses.append(avg_train_loss)
+                accuracies.append(avg_train_acc)
 
-            avg_train_loss = train_loss / len(self.train_dataloader)
-            avg_train_acc = train_acc / len(self.train_dataloader)
-            
-            losses.append(avg_train_loss)
-            accuracies.append(avg_train_acc)
+                log += f"Epoch: {epoch + 1} || Train Loss: {avg_train_loss} || Train Accuracy {avg_train_acc}\n"
 
-            log += f"Epoch: {epoch + 1} || Train Loss: {avg_train_loss} || Train Accuracy {avg_train_acc}\n"
+                if earlystopping:
+                    if avg_train_loss < best_loss:
+                        best_loss = avg_train_loss
+                        early_stop_counter = 0
+                        log += "Best loss improved"
+                    else:
+                        early_stop_counter += 1
+                        log += f"No improvement ({early_stop_counter/patience})"
+                        
+                        if early_stop_counter >= patience:
+                            log += f"\nEarly stopping triggered at epoch {epoch+1}!"
+                            break
+                log += "\n"
 
-            if earlystopping:
-                if avg_train_loss < best_loss:
-                    best_loss = avg_train_loss
-                    early_stop_counter = 0
-                    log += "Best loss improved"
-                else:
-                    early_stop_counter += 1
-                    log += f"No improvement ({early_stop_counter/patience})"
-                    
-                    if early_stop_counter >= patience:
-                        log += f"\nEarly stopping triggered at epoch {epoch+1}!"
-                        break
-            log += "\n"
-
-            yield log, losses, accuracies, analytics
-        return losses, accuracies
+                yield log, losses, accuracies, analytics
+            return losses, accuracies
+        except Exception as e:
+            raise RuntimeError(f"Training failed {str(e)}")
 
     def build(self, architecture: str = "ResNet18", layer1: bool = False, layer2: bool = False, layer3: bool = False, layer4: bool = False, dropout=0.2):
         """Model build process"""
-        resnet_models = {
-            "ResNet18": (torchvision.models.resnet18, 512),
-            "ResNet34": (torchvision.models.resnet34, 512),
-            "ResNet50": (torchvision.models.resnet50, 2048),
-            "ResNet101": (torchvision.models.resnet101, 2048),
-            "ResNet152": (torchvision.models.resnet152, 2048),
-        }
-        model_arch, in_features = resnet_models[architecture]
-        self.model = model_arch(weights="DEFAULT").to(device)
-        self.model.fc = torch.nn.Sequential(
-        torch.nn.Dropout(p=dropout, inplace=True),
-        torch.nn.Linear(in_features=in_features,
-                    out_features=len(self.train_dataset.classes),
-                    bias=True)).to(device)
-        
-        for param in self.model.parameters():
-            param.requires_grad = False
+        if not hasattr(self, "train_dataset"):
+            raise RuntimeError("Training dataset not loaded before buildinng model.")
+        try:
+            resnet_models = {
+                "ResNet18": (torchvision.models.resnet18, 512),
+                "ResNet34": (torchvision.models.resnet34, 512),
+                "ResNet50": (torchvision.models.resnet50, 2048),
+                "ResNet101": (torchvision.models.resnet101, 2048),
+                "ResNet152": (torchvision.models.resnet152, 2048),
+            }
+            model_fn, in_features = resnet_models[architecture]
+            self.model = model_fn(weights="DEFAULT").to(device)
+            self.model.fc = torch.nn.Sequential(
+                torch.nn.Dropout(p=dropout, inplace=True),
+                torch.nn.Linear(in_features=in_features,
+                        out_features=len(self.train_dataset.classes),
+                        bias=True)).to(device)
+            
+            for param in self.model.parameters():
+                param.requires_grad = False
 
-        for param in self.model.fc.parameters():
-            param.requires_grad = True
+            for param in self.model.fc.parameters():
+                param.requires_grad = True
 
-        layer_map = {
-            layer1: "layer1",
-            layer2: "layer2",
-            layer3: "layer3",
-            layer4: "layer4"
-        }
+            layer_map = {
+                layer1: "layer1",
+                layer2: "layer2",
+                layer3: "layer3",
+                layer4: "layer4"
+            }
 
-        for name, key in layer_map.items():
-            if name:
-                layer = getattr(self.model, key)
-                for param in layer.parameters():
-                    param.requires_grad = True
-        
-        self.layer_config = {
-            "layer1": layer1,  
-            "layer2": layer2,
-            "layer3": layer3,
-            "layer4": layer4     
-        }
+            for name, key in layer_map.items():
+                if name:
+                    layer = getattr(self.model, key)
+                    for param in layer.parameters():
+                        param.requires_grad = True
+            
+            self.layer_config = {
+                "layer1": layer1,  
+                "layer2": layer2,
+                "layer3": layer3,
+                "layer4": layer4     
+            }
+        except Exception as e:
+            raise RuntimeError(f"Model build failed: {str(e)}")
     
     def test_transforms_dataset(self, test_transforms: transforms.Compose | None, test_path: str, test_bs: int = 32):
         """Setup dataloader for testing data"""
-        default_test_transform = transforms.Compose([
-                                             transforms.Resize((224, 224)),
-                                             transforms.CenterCrop(224),
-                                             transforms.ToTensor(),
-                                             transforms.Normalize(mean=[0.485, 0.456, 0.406], 
-                                                                  std=[0.229, 0.224, 0.225])
-                                            ])
-        if test_transforms == None:
-            self.test_dataset = torchvision.datasets.ImageFolder(root=test_path, transform = default_test_transform)
-        else:
+        if test_bs <= 0:
+            raise ValueError("Batch size must be greater than zero.")
+        try:
+            if test_transforms is None:
+                test_transforms = transforms.Compose([
+                                                    transforms.Resize((224, 224)),
+                                                    transforms.CenterCrop(224),
+                                                    transforms.ToTensor(),
+                                                    transforms.Normalize(mean=[0.485, 0.456, 0.406], 
+                                                                        std=[0.229, 0.224, 0.225])
+                                                    ])
+                
             self.test_dataset = torchvision.datasets.ImageFolder(root=test_path, transform = test_transforms)
-        self.test_dataloader = DataLoader(self.test_dataset, batch_size=test_bs, shuffle=True)
+            self.test_dataloader = DataLoader(self.test_dataset, batch_size=test_bs, shuffle=False)
 
-        return self.test_dataset.classes
+            return self.test_dataset.classes
+        except Exception as e:
+            raise RuntimeError(f"Failed to load test dataset: {e}")
     
     def train_transforms_dataset(self, train_transforms: transforms.Compose | None, train_path: str, train_bs: int = 32,):
         """Setup dataloader for training data"""
-        default_train_transform = transforms.Compose([
-                                              transforms.Resize((256, 256)),
-                                              transforms.RandomResizedCrop(224, scale=(0.6, 1.0)),
-                                              transforms.RandomHorizontalFlip(0.5),
-                                              transforms.ToTensor(),
-                                              transforms.Normalize(mean=[0.485, 0.456, 0.406], 
-                                                                   std=[0.229, 0.224, 0.225])
-                                              ])
-        if train_transforms == None:
-            self.train_dataset = torchvision.datasets.ImageFolder(root=train_path, transform = default_train_transform)
-        else:
+        if train_bs <= 0:
+            raise ValueError("Batch size must be greater than zero.")
+        try:
+            if train_transforms is None:
+                train_transforms = transforms.Compose([
+                                                    transforms.Resize(256),                    
+                                                    transforms.CenterCrop(256),
+                                                    transforms.RandomResizedCrop(224, scale=(0.6, 1.0)),
+                                                    transforms.RandomHorizontalFlip(0.5),
+                                                    transforms.ColorJitter(
+                                                        brightness=0.4,
+                                                        contrast=0.4,
+                                                        saturation=0.4,
+                                                        hue=0.1
+                                                    ),
+                                                    transforms.ToTensor(),
+                                                    transforms.Normalize(mean=[0.485, 0.456, 0.406], 
+                                                                        std=[0.229, 0.224, 0.225])
+                                                    ])
             self.train_dataset = torchvision.datasets.ImageFolder(root=train_path, transform = train_transforms)
+            self.train_dataloader = DataLoader(self.train_dataset, batch_size=train_bs, shuffle=True)
 
-        self.train_dataloader = DataLoader(self.train_dataset, batch_size=train_bs, shuffle=True)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load training dataset {e}")
 
     def save_model(self, model, username, model_name, final_accuracy, final_loss, epochs, loss_curve, accuracy_curve, arch_type):
-
-        with open(USERS_JSON, "r") as f:
-            users = json.load(f)
+        try:
+            with open(USERS_JSON, "r") as f:
+                users = json.load(f)
         
-        if username not in users:
-            return "User not found"
+            if username not in users:
+                return "User not found"
+            
+            models = users[username].get("models", {})
+
+            if model_name in models:
+                model_path = Path(models[model_name]["path"])
+            else:
+                model_path = Path(f"saved_models/{username}_{model_name}.pth")
+                models[model_name] = {
+                    "path": str(model_path),
+                    "accuracy": float(final_accuracy),
+                    "loss": float(final_loss),
+                    "epochs": int(epochs),
+                    "date": str(datetime.datetime.now()),
+                    "architecture": arch_type,
+                    "loss_curve": [float(x) for x in loss_curve],
+                    "accuracy_curve": [float(x) for x in accuracy_curve],
+                    "confusion_matrix": None,
+                    "layers": self.layer_config,
+                    "class_names": None,
+                }
+
+                models[model_name]["notes"] = "My honest reaction:"
+                users[username]["models"] = models
+
+                with open (USERS_JSON, "w") as f:
+                    json.dump(users, f, indent=4)
+
+            torch.save(model.state_dict(), model_path)
+
+            return f"Model '{model_name}' saved!"
+        except Exception as e:
+            raise RuntimeError(f"Failed to save model: {e}")
         
-        models = users[username].get("models", {})
-
-        if model_name in models:
-            model_path = Path(models[model_name]["path"])
-
-        else:
-
-            model_path = Path(f"saved_models/{username}_{model_name}.pth")
-
-            models[model_name] = {
-                "path": str(model_path),
-                "accuracy": float(final_accuracy),
-                "loss": float(final_loss),
-                "epochs": int(epochs),
-                "date": str(datetime.datetime.now()),
-                "architecture": arch_type,
-                "loss_curve": [float(x) for x in loss_curve],
-                "accuracy_curve": [float(x) for x in accuracy_curve],
-                "confusion_matrix": None,
-                "layers": self.layer_config,
-                "class_names": None,
-            }
-
-            models[model_name]["notes"] = "My honest reaction:"
-            users[username]["models"] = models
-
-            with open (USERS_JSON, "w") as f:
-                json.dump(users, f, indent=4)
-
-        torch.save(model.state_dict(), model_path)
-
-        return f"Model '{model_name}' saved!"
-
     def load_model(self, username, model_name, num_classes = 2):
-        with open(USERS_JSON, 'r') as f:
-            users = json.load(f)
-        user_models = users[username].get("models", {})
-        model_path = user_models[model_name]["path"]
-        model_arch = user_models[model_name]["architecture"]
-        layer_config = user_models[model_name]["layers"]
+        try:
+            with open(USERS_JSON, 'r') as f:
+                users = json.load(f)
 
-        resnet_models = {
-            "ResNet18": (torchvision.models.resnet18, 512),
-            "ResNet34": (torchvision.models.resnet34, 512),
-            "ResNet50": (torchvision.models.resnet50, 2048),
-            "ResNet101": (torchvision.models.resnet101, 2048),
-            "ResNet152": (torchvision.models.resnet152, 2048),
-        }
-        model_fn, in_features = resnet_models[model_arch]
-        self.model = model_fn(weights=None).to(device)
-        self.model.fc = torch.nn.Sequential(
-            torch.nn.Dropout(p=0.2, inplace=True),
-            torch.nn.Linear(in_features, num_classes)
-        ).to(device)
+            user_models = users[username].get("models", {})
+            model_path = user_models[model_name]["path"]
+            model_arch = user_models[model_name]["architecture"]
+            layer_config = user_models[model_name]["layers"]
 
-        for param in self.model.parameters():
-            param.requires_grad = False
+            resnet_models = {
+                "ResNet18": (torchvision.models.resnet18, 512),
+                "ResNet34": (torchvision.models.resnet34, 512),
+                "ResNet50": (torchvision.models.resnet50, 2048),
+                "ResNet101": (torchvision.models.resnet101, 2048),
+                "ResNet152": (torchvision.models.resnet152, 2048),
+            }
+            model_fn, in_features = resnet_models[model_arch]
+            self.model = model_fn(weights=None).to(device)
+            self.model.fc = torch.nn.Sequential(
+                torch.nn.Dropout(p=0.2, inplace=True),
+                torch.nn.Linear(in_features, num_classes)
+            ).to(device)
 
-        layer_map = {
-            "layer1": "layer1",
-            "layer2": "layer2",
-            "layer3": "layer3",
-            "layer4": "layer4"
-        }
+            for param in self.model.parameters():
+                param.requires_grad = False
 
-        for layer_name, enabled in layer_map.items():
-            if enabled:
-                layer = getattr(self.model, layer_map[layer_name])
-                for param in layer.parameters():
-                    param.requires_grad = True
+            for layer_name, enabled in layer_config.items():
+                if enabled:
+                    layer = getattr(self.model, layer_name)
+                    for param in layer.parameters():
+                        param.requires_grad = True
 
-        state_dict = torch.load(model_path, map_location=device)
-        self.model.load_state_dict(state_dict)
+            state_dict = torch.load(model_path, map_location=device)
+            self.model.load_state_dict(state_dict)
 
-        self.model = self.model.to(device)
-        self.model = self.model.float()
-        self.model.eval()
+            self.model = self.model.to(device)
+            self.model = self.model.float()
+            self.model.eval()
 
-        return self.model
+            return self.model
+        except Exception as e:
+            raise RuntimeError(f"Failed to load model: {e}")
     
     def download_model(self, username, model_name):
-        with open(USERS_JSON, 'r') as f:
-            users = json.load(f)
-        user_models = users[username].get("models", {})
-        model_path = user_models[model_name]["path"]
-        state_dict = torch.load(model_path, map_location=device)
+        try:
+            with open(USERS_JSON, 'r') as f:
+                users = json.load(f)
+            if username not in users:
+                raise ValueError("User not found.")
+            
+            user_models = users[username].get("models", {})
+            if model_name not in user_models:
+                raise ValueError("Model not found for this user.")
+            
+            model_path = user_models[model_name]["path"]
+            if not Path(model_path).exists():
+                raise FileNotFoundError("Saved model file does not exist.")
+            
+            state_dict = torch.load(model_path, map_location=device)
 
-        with open(f"{model_name}.pkl", "wb") as f:
-            pickle.dump(state_dict, f)
+            out_path = f"{model_name}.pkl"
+            with open(out_path, "wb") as f:
+                pickle.dump(state_dict, f)
 
-        return
+            return out_path
+        
+        except Exception as e:
+            raise RuntimeError(f"Failed to download model: {e}")
     
     def gradcam(self, username, image, model_name, num_classes):
+        try:
+            input_tensor = image.unsqueeze(0).to(device)
+            input_tensor.requires_grad_(True)
 
-        input_tensor = image.unsqueeze(0).to(device)
-        input_tensor.requires_grad_(True)
+            rgb_img = image.permute(1, 2, 0).cpu().numpy()
+            rgb_img = (rgb_img - rgb_img.min()) / (rgb_img.max() - rgb_img.min())
+            rgb_img = rgb_img.astype("float32")
 
-        rgb_img = image.permute(1, 2, 0).cpu().numpy()
-        rgb_img = (rgb_img - rgb_img.min()) / (rgb_img.max() - rgb_img.min())
-        rgb_img = rgb_img.astype("float32")
+            loaded_model = self.load_model(username, model_name, num_classes)
+            output = loaded_model(input_tensor)
+            predicted_class = output.argmax().item()
 
-        loaded_model = self.load_model(username, model_name, num_classes)
-        output = loaded_model(input_tensor)
-        predicted_class = output.argmax().item()
+            cam = GradCAM(model=loaded_model, target_layers=[loaded_model.layer4[-1]])
+            targets = [ClassifierOutputTarget(predicted_class)]
+            grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]
 
-        cam = GradCAM(model=loaded_model, target_layers=[loaded_model.layer4[-1]])
-        targets = [ClassifierOutputTarget(predicted_class)]
-        grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]
-
-        cam_image = show_cam_on_image(rgb_img, grayscale_cam, use_rgb = True)
-    
-        return predicted_class, rgb_img, cam_image
-    
+            cam_image = show_cam_on_image(rgb_img, grayscale_cam, use_rgb = True)
+            
+            return predicted_class, rgb_img, cam_image
+        except Exception as e:
+            raise RuntimeError(f"GradCAM failed: {e}")
+        
     def gaussian_blur(self, img, sigma):
         k = int(2 * round(3 * sigma) + 1)
         x = torch.arange(k) - k // 2
@@ -367,107 +417,116 @@ class ModelManager():
         l2_weight: float = 1e-4,
         device: str = None
     ):
-        if device is None:
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        try:
+            if device is None:
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.model.eval().to(device)
+            self.model.eval().to(device)
 
-        def get_layer(model, layer_name):
-            modules = dict([*model.named_modules()])
-            return modules.get(layer_name)
+            def get_layer(model, layer_name):
+                modules = dict([*model.named_modules()])
+                return modules.get(layer_name)
 
-        target_layer = get_layer(self.model, layer_name)
-        if target_layer is None:
-            raise ValueError(f"Layer {layer_name} not found in model.")
+            target_layer = get_layer(self.model, layer_name)
+            if target_layer is None:
+                raise ValueError(f"Layer {layer_name} not found in model.")
 
-        activation = None
+            activation = None
 
-        def hook_fn(module, input, output):
-            nonlocal activation
-            activation = output
+            def hook_fn(module, input, output):
+                nonlocal activation
+                activation = output
 
-        handle = target_layer.register_forward_hook(hook_fn)
+            handle = target_layer.register_forward_hook(hook_fn)
 
-        img = torch.randn(1, 3, img_size, img_size, device=device, requires_grad = True)
-        optimizer = torch.optim.Adam([img], lr=lr)
+            img = torch.randn(1, 3, img_size, img_size, device=device, requires_grad = True)
+            optimizer = torch.optim.Adam([img], lr=lr)
 
-        for step in range(steps):
-            optimizer.zero_grad()
+            for step in range(steps):
+                optimizer.zero_grad()
 
-            _ = self.model(img)
+                _ = self.model(img)
 
-            if activation is None:
-                continue
+                if activation is None:
+                    continue
 
-            loss = -activation[:, channel_idx].mean()
+                loss = -activation[:, channel_idx].mean()
 
-            loss += 1e-4 * torch.norm(img)
+                loss += 1e-4 * torch.norm(img)
 
-            tv = (
-                torch.sum(torch.abs(img[:, :, :, :-1] - img[:, :, :, 1:])) + \
-                torch.sum(torch.abs(img[:, :, :-1, :] - img[:, :, 1:, :]))
-            )
-            loss += 1e-4 * tv
+                tv = (
+                    torch.sum(torch.abs(img[:, :, :, :-1] - img[:, :, :, 1:])) + \
+                    torch.sum(torch.abs(img[:, :, :-1, :] - img[:, :, 1:, :]))
+                )
+                loss += 1e-4 * tv
 
-            if step % 12 == 0 and step > 40:
-                sigma = 0.5 + (step / steps) * 0.5
-                img.data = self.gaussian_blur(img, sigma)
+                if step % 12 == 0 and step > 40:
+                    sigma = 0.5 + (step / steps) * 0.5
+                    img.data = self.gaussian_blur(img, sigma)
 
-            loss.backward()
-            optimizer.step()
+                loss.backward()
+                optimizer.step()
 
-            img.data = torch.clamp(img.data, -2.5, 2.5)
-        
-        handle.remove()
+                img.data = torch.clamp(img.data, -2.5, 2.5)
+            
+            handle.remove()
 
-        img = img.detach().cpu().squeeze()
-        img = (img - img.min()) / (img.max() - img.min() + 1e-8)
-        img = (img * 255).clamp(0, 255).byte().permute(1, 2, 0).numpy()
+            img = img.detach().cpu().squeeze()
+            img = (img - img.min()) / (img.max() - img.min() + 1e-8)
+            img = (img * 255).clamp(0, 255).byte().permute(1, 2, 0).numpy()
 
-        return Image.fromarray(img)
-    
+            return Image.fromarray(img)
+        except Exception as e:
+            raise RuntimeError(f"Feature visualization failed: {e}")
     def get_activation_maps(self, model, layer_name, image_tensor):
-        activations = {}
+        try:
+            modules = dict(model.named_modules())
+            if layer_name not in modules:
+                raise ValueError(f"Layer '{layer_name}' not found")
+            
+            activations = {}
 
-        def hook_fn(module, input, output):
-            activations['feat'] = output.detach().cpu()
-        
-        layer = dict(model.named_modules())[layer_name]
-        handle = layer.register_forward_hook(hook_fn)
+            def hook_fn(module, input, output):
+                activations['feat'] = output.detach().cpu()
 
-        _ = model(image_tensor)
+            handle = modules[layer_name].register_forward_hook(hook_fn)
+            _ = model(image_tensor)
+            handle.remove()
 
-        handle.remove()
-
-        return activations['feat']
+            return activations['feat']
+        except Exception as e:
+            raise RuntimeError(f"Failed to extract activation maps: {e}")
     
     def activation_grid(self, activations, max_cols=8):
-        acts = activations.squeeze(0)
+        try:
+            acts = activations.squeeze(0)
 
-        C, H, W = acts.shape
+            C, H, W = acts.shape
 
-        acts = acts.clone()
-        for i in range(C):
-            ch = acts[i]
-            ch = (ch - ch.min()) / (ch.max() - ch.min() + 1e-8)
-            acts[i] = ch
+            acts = acts.clone()
+            for i in range(C):
+                ch = acts[i]
+                ch = (ch - ch.min()) / (ch.max() - ch.min() + 1e-8)
+                acts[i] = ch
+            
+            acts = acts.cpu().numpy()
+            cols = min(max_cols, C)
+            rows = math.ceil(C / cols)
+            grid = np.zeros((rows * H, cols * W), dtype=np.uint8)
+
+            idx = 0
+            for r in range(rows):
+                for c in range(cols):
+                    if idx >= C:
+                        break
+                    ch_img = (acts[idx] * 255).astype(np.uint8)
+                    grid[r*H:(r+1)*H, c*W:(c+1)*W] = ch_img
+                    idx += 1
+            
+            return Image.fromarray(grid)
+        except Exception as e:
+            raise RuntimeError(f"Failed to build activation grid: {e}")
         
-        acts = acts.cpu().numpy()
-        cols = min(max_cols, C)
-        rows = math.ceil(C / cols)
-        grid = np.zeros((rows * H, cols * W), dtype=np.uint8)
-
-        idx = 0
-        for r in range(rows):
-            for c in range(cols):
-                if idx >= C:
-                    break
-                ch_img = (acts[idx] * 255).astype(np.uint8)
-                grid[r*H:(r+1)*H, c*W:(c+1)*W] = ch_img
-                idx += 1
-        
-        return Image.fromarray(grid)
-
     def get_cpu_ram_usage(self):
         cpu = psutil.cpu_percent()
         ram = psutil.virtual_memory().percent
@@ -490,3 +549,16 @@ class ModelManager():
             }
         except Exception:
             return None
+        
+    def layer_exists(self, model, layer_name):
+        try:
+            parts = layer_name.split(".")
+            module = model
+            for p in parts:
+                if p.isdigit():
+                    module = module[int(p)]
+                else:
+                    module = getattr(module, p)
+            return True
+        except Exception:
+            return False
