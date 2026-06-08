@@ -12,17 +12,23 @@ import json
 import pygame
 from system.backend_config.config import NOTIFICATIONS_ENABLED, SOUNDSENABLED, USER_DB, MUSIC_FOLDER
 
+# Initialise audio system for notification sounds
 pygame.mixer.init()
 music_path = f"/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/{MUSIC_FOLDER}/ping.mp3"
 pygame.mixer.music.load(music_path)
 
+# Instantiate system managers
 mm = ModelManager()
 gm= GraphManager()
 pm = ProfileManager()
 
 class GradCAM():
+    """UI + logic for generating GradCAM visualizations and augmentation previews."""
     def __init__(self, current_user):
+        # Section header
         gr.Markdown("### View GradCAMs.")
+        
+        # Available transform options for augmentation preview
         transform_options = [
                 "Resize(256, 256)",
                 "CenterCrop(224)",
@@ -37,31 +43,38 @@ class GradCAM():
             ]
         self.current_user = current_user
         
+        # Dataset path input
         with gr.Group():
                 gr.Markdown("Image Dataset")
                 self.image_path_input = gr.Textbox(label="Image Folder Path", placeholder="/absolute/path/to/your/dataset")
-
+        
+        # Model selection dropdown
         with gr.Group():
             gr.Markdown("Model Selection")
             self.model = gr.Dropdown(choices=[], label="Select a saved model for testing!", interactive=True)
 
+        # Transform selection
         with gr.Group():
             gr.Markdown("Transforms")
             self.transforms = gr.CheckboxGroup(choices=transform_options, label="Select transforms for testing augmentations!")
         
+        # Hyperparameters
         with gr.Group():
             gr.Markdown("Hyperparameters")
             self.bs_input = gr.Number(label="Batch Size")
         
+        # Refresh saved models
         with gr.Group():
             gr.Markdown("Refresh Models")
             self.refresh_btn = gr.Button("Refresh Saved Models")
 
+        # Augmentation preview
         with gr.Group():
             gr.Markdown("View Augmentations")
             self.augbutton = gr.Button("View Augmentation Examples")
             self.augmentation = gr.Image(type="numpy", buttons=["download"])
         
+        # GradCAM results
         with gr.Group():
             gr.Markdown("GradCAM Results")
             self.gcbutton = gr.Button("Generate GradCAM")
@@ -70,11 +83,13 @@ class GradCAM():
                 self.gradimage = gr.Image(type="numpy", label="GradCAM Image", buttons=["download"], container=False)
                 self.predclass = gr.Label()
 
+        # Button callbacks
         self.refresh_btn.click(
             fn=self.get_user_models,
             inputs=[self.current_user],
             outputs=[self.model]
         )
+        
         
         self.gcbutton.click(
             fn=self.update_gradcam,
@@ -89,54 +104,67 @@ class GradCAM():
         )
 
     def update_gradcam(self, username, dataset_path, model_name, bs):
+        """Generate GradCAM visualization"""
         try:
-
+            # Validate model selection
             if not model_name:
                 gr.Warning("Please select a model before generating GradCAM.")
                 return None, None, None
             
+            # Validate dataset path
             if not dataset_path:
                 gr.Warning("Please enter a dataset path.")
                 return None, None, None
             
+            # Validate path security
             SecurityManager(dataset_path).validate_path()
 
+            # Validate batch size
             if bs is None or bs <= 0:
                 gr.Warning("Batch size must be a positive number.")
                 return None, None, None
             
+            # Load test dataset
             gradcam_path = os.path.join(dataset_path, "test")
             class_names = mm.test_transforms_dataset(None, gradcam_path, bs)
             num_classes = len(class_names)
 
+            # Ensure dataset loaded
             if not hasattr(mm, 'test_dataset') or mm.test_dataset is None:
                 return gr.Warning("Failed to load test dataset. Check folder structure.")
             
             if len(mm.test_dataset) == 0:
                 return gr.Warning("Test dataset is empty."), None, None
             
+            # Pick a random test image
             index = random.randint(0, len(mm.test_dataset) - 1) 
             pil_image, _ = mm.test_dataset[index]
 
+            # Compute GradCAM
             predicted_class, originimage, cam_image = mm.gradcam(username, pil_image, model_name, num_classes)
             predicted_label = class_names[predicted_class].capitalize()
 
+            # Notifications
             if NOTIFICATIONS_ENABLED:
                 gr.Info("GradCAM computation completed successfully!", duration=8)
             if SOUNDSENABLED:
                 pygame.mixer.music.play()
             return predicted_label, originimage, cam_image
         
+        # Error handling in case of Exception
         except Exception as e:
             return gr.Warning(str(e)), None, None
         
     def update_augmentations(self, augmentation_path, selected_transforms, bs):
+        """Generate augmentation preview"""
         try:
+            # Must select at least one transform
             if not selected_transforms:
                 return gr.Warning("No augmentation transforms supplied.")
             
             aug_transforms = []
 
+            # Build transform pipeline based on user selection
             if "Resize(256, 256)" in selected_transforms:
                 aug_transforms.append(transforms.Resize((224, 224)))
             
@@ -170,18 +198,27 @@ class GradCAM():
                                                                     shear=(-5, 5),         
                                                                     fill=0                
                                                                     ))
+            # Ensure ToTensor is included
             if not any(isinstance(t, transforms.ToTensor) for t in aug_transforms):
                 aug_transforms.append(transforms.ToTensor())
+            
+            # Compose transforms
             augmented_transforms = transforms.Compose(aug_transforms)
+
+            # Load dataset with transforms
             augmentation_path = os.path.join(augmentation_path, "test")
             mm.test_transforms_dataset(augmented_transforms, augmentation_path, bs)
 
             if not hasattr(mm, 'test_dataset') or mm.test_dataset is None:
                 return gr.Warning("Failed to load dataset for augmentation.")
+            
             dataset = mm.test_dataset
+
+            # Pick random sample
             index = random.randint(0, len(dataset) - 1) 
             pil_image, _ = dataset[index]
 
+            # Convert tensor to numpy
             if isinstance(pil_image, torch.Tensor):
                 if pil_image.dim() == 3:
                     pil_image = pil_image.permute(1, 2, 0).numpy()
@@ -189,22 +226,28 @@ class GradCAM():
                     pil_image = pil_image.numpy()
             elif hasattr(pil_image, 'convert'):
                 pil_image = np.array(pil_image)
-                
+            
+            # Notifications
             if NOTIFICATIONS_ENABLED:
                 gr.Info("Augmentated image computed successfully!", duration=8)
             if SOUNDSENABLED:
                 pygame.mixer.music.play()
 
             return pil_image
+        # Error handling in case of Exception
         except Exception as e:
             return gr.Warning(str(e))
     
     def get_user_models(self, username):
+        """Load saved models for dropdown"""
         try:
+            # Load user DB
             with open(USER_DB, "r") as f:
                 users = json.load(f)
             
+            # Get model names and load in dropdown
             model_names = list(users[username]["models"].keys())
             return gr.update(choices=model_names, value=None)
+        # Error handling in case of Exception
         except Exception as e:
             return gr.Warning(str(e))

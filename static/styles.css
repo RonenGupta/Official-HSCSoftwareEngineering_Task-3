@@ -1,9 +1,17 @@
+/* Import external animation library (Animate.css)
+   Used for fade-in, slide-in, and other UI animations. */ 
+
 @import url('https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css');
 
+/* Layout spacing for rows that need extra horizontal gap */ 
 .spaced-row {
     gap: 24px !important;
 }
 
+/* Global background + layout adjustments 
+   - Transparent background for the whole app
+   - Ensures full-height layout
+   - Adds padding around the interface */ 
 body, .gradio-container {
     background: transparent !important;   
     min-height: 100vh !important;   
@@ -14,6 +22,8 @@ body, .gradio-container {
     position: relative !important;
 }
 
+/* Force all Gradio containers and blocks to have a white
+background and white borders for a clean, unified theme. */
 .gradio-container,
 div[class*="gr-"],
 div[class*="svelte-"],
@@ -33,6 +43,7 @@ div.column {
     border-color: #ffffff !important;
 }
 
+/* Center markdown text inside rows */
 div.row:has(> .gr-markdown),
 .block p,
 div.row p {
@@ -41,21 +52,27 @@ div.row p {
     align-items: center !important;
 }
 
+/* Section spacing for model cards on dashboard */
 .models-section {
     margin-top: 32px !important; 
     margin-bottom: 32px !important;
 }
 
+/* Markdown spacing */
 .gr-markdown {
     margin-top: 20px !important;
     margin-bottom: 20px !important;
 }
 
+/* Heading styling (H1, H2, H3)
+   - Orange color
+   - Bold weight  */
 h1, h2, h3, .gradio-container h1, .gradio-container h2, .gradio-container h3 {
     color: #ff9800 !important; 
     font-weight: 700 !important;
 }
 
+/* Rounded borders for all input components */
 .block, 
 fieldset, 
 .accordion, 
@@ -67,11 +84,13 @@ select {
     border-radius: 12px !important; 
 }
 
+/* Tab navigation styling */
 .tab-nav {
     border-bottom: 2px solid #e2e8f0 !important;
     margin-bottom: 12px !important;
 }
 
+/* Fixed-width containers (used for audio + chat panel) */
 .fixed-width-container, 
 .fixed-width-container .gradio-audio,
 .fixed-width-container audio {
@@ -80,10 +99,12 @@ select {
     overflow-x: hidden !important;
 }
 
+/* Utility class to hide entire tabs */
 .hidden-tab {
     display: none !important;
 }
 
+/* Flip animation for rotating profile picture */
 @keyframes flip {
     0% {
     transform: rotateY(0deg);
@@ -93,27 +114,9 @@ select {
     }
 }
 
-@keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {
-    transform: translateY(0);
-    animation-timing-function: cubic-bezier(0.215 0.610, 0.355, 1.00);
-    }
-
-    40%, 43% {
-    transform: translateY(-30px);
-    animation-timing-function: cubic-bezier(0.755 0.050, 0.855, 0.060);
-    }
-
-    70% {
-    transform: translateY(-15px);
-    animation-timing-function: cubic-bezier(0.755 0.050, 0.855, 0.060);
-    }
-
-    90% {
-    transform: translateY(-4px);
-   }
-}
-
+/* Profile picture styling (sidebar)
+   - Circular crop
+   - Flip animation */
 #profile-pic {
     width: 60px !important;
     height: 60px !important;
@@ -132,6 +135,7 @@ select {
     object-fit: cover !important;
 }
 
+/* Chat panel (right side assistant) */
 #chat-panel {
     top: 0;
     right: 0;
@@ -148,6 +152,7 @@ select {
     opacity: 1;
 }
 
+/* Hidden state for chat panel */
 #chat-panel.hidden {
     transform: translateX(100%);
     opacity: 0;
@@ -159,16 +164,19 @@ select {
     border: none !important;
 }
 
+/* Chat scroll area */
 #global-chat {
     flex: 1;
     overflow-y: auto;
     max-height: 300px;
 }
 
+/* Chat input spacing */
 #global-chat-input {
     margin-top: 10px;
 }
 
+/* Hide assistant audio element */
 #assistant-audio {
     display: none !important;
 }

@@ -1,3 +1,5 @@
+# Contains global variables that stay consistent through UI
+
 import torch
 
 NOTIFICATIONS_ENABLED = True
