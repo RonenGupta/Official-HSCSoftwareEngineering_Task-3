@@ -2,7 +2,6 @@ import gradio as gr
 import os
 import json
 from gtts import gTTS
-import base64
 import io
 from groq import Groq
 

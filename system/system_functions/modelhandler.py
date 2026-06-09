@@ -3,16 +3,11 @@ import torch.nn.functional as F
 import torchvision
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from torchvision.datasets import ImageFolder
-from torch.utils.data import DataLoader
-from torchvision.models import resnet18, ResNet18_Weights, resnet34, ResNet34_Weights, resnet50, ResNet50_Weights, resnet101, ResNet101_Weights, resnet152, ResNet152_Weights
-import gradio as gr
 from PIL import Image
 import numpy as np
 import json
 import math
 import time
-import os  
 import pickle
 import datetime
 import psutil

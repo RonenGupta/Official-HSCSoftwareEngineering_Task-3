@@ -132,17 +132,21 @@ class Test_Tab():
     def get_user_models(self, username):
         """Load saved model names for dropdown"""
         try:
+            # Load user DB
             with open(USER_DB, "r") as f:
                 users = json.load(f)
             
+            # Get model names in list, update dropdown
             model_names = list(users[username]["models"].keys())
             return gr.update(choices=model_names, value=None)
+        # Error handling in case of Exception
         except Exception as e:
             return gr.Warning(str(e))
     
     def refresh_preferences(self, user):
         """Refresh default batch size from user preferences."""
         prefs = pm.get_preferences(user)
+        # Get preferences for BS
         return (
             gr.update(value=prefs.get("default_batch_size", 32)),
         )

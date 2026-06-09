@@ -276,9 +276,11 @@ class Train_Tab():
     def save_model(self, user, model_name, accuracy, loss, epochs):
         """Save Trained Model"""
         try:
+            # Check if trained model
             if not hasattr(self, "trained_model"):
                 return gr.Warning("No model to train")
             
+            # Check if model name passed
             if not model_name:
                 return gr.Warning("Must pass model name")
             
@@ -309,6 +311,7 @@ class Train_Tab():
         activation_defaults = prefs.get("default_activation_layer", "layer4")
         if isinstance(activation_defaults, str):
             activation_defaults = [activation_defaults]
+        # Get defaults for LR, Epochs, Batch Size, Dropout, Architecture, Layers
         return (
             gr.update(value=prefs.get("default_learning_rate", 0.001)),
             gr.update(value=prefs.get("default_epochs", 10)),
