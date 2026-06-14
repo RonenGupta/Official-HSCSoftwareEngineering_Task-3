@@ -70,19 +70,20 @@ The repository includes a sample dataset structure under `datasets/hymenoptera_d
 
 To use this dataset in any dataset entry, simply pass in the base folder, and the program will interpret train and test folders.
 
-## Testing
-
-Run the available unit tests with:
-
-```bash
-pytest
-```
-
-## Notes
+## Notes (IMPORTANT)
 
 - `users.json` stores user credentials and profile preferences.
 - Saved model files are located in `saved_models/`.
 - The app uses `pygame` for audio notifications and `gradio` for the web UI.
+- If you are uploading a dataset, it MUST be in the following structure:
+
+- `datasets/hymenoptera_data/` - Example Dataset
+  - `datasets/hymenoptera_data/train` - Training directory of the dataset
+    - `datasets/hymenoptera_data/train/ants` - Class1
+    - `datasets/hymenoptera_data/train/bees` - Class2
+  - `datasets/hymenoptera_data/test` - Testing directory of the dataset
+    - `datasets/hymenoptera_data/test/ants` - Class1
+    - `datasets/hymenoptera_data/test/bees` - Class2
 
 ## License
 
