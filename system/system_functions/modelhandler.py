@@ -98,7 +98,7 @@ class ModelManager():
         except Exception as e:
             raise RuntimeError(f"Testing failed: {str(e)}")
 
-    def train(self, earlystopping, patience, epochs: int, lr: float = 0.01):
+    def train(self, earlystopping, patience, epochs: int, lr: float = 0.01, stop_callback = None):
         """Training loop, takes user inputted early stopping boolean,
         patience if supplied, epochs, learning rate
         returns training log, losses, accuracies, analytics"""
@@ -136,15 +136,21 @@ class ModelManager():
 
             # Loop through each epoch
             for epoch in range(EPOCHS):
+    
                 # Initialise current train loss and accuracy zero
                 train_loss = 0
                 train_acc = 0
 
                 # Put model in training mode, enabling gradient tracking
                 self.model.train()
+
                 # Loop through train dataloader
                 for X, y in self.train_dataloader:
-                    
+                    # If true, stops training and calls the request_stop function
+                    if stop_callback and stop_callback():
+                        log += "\nTraining stopped by user."
+                        break
+
                     # Marks the start of one training iteration / batch in the dataloader
                     step_start = time.time()
 

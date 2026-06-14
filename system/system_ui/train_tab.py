@@ -6,6 +6,7 @@ from system.system_functions.profilehandler import ProfileManager
 from torchvision import transforms
 from system.backend_config.config import USER_DB
 import json
+import time
 import os
 import pygame
 from system.backend_config.config import NOTIFICATIONS_ENABLED, SOUNDSENABLED, MUSIC_FOLDER
@@ -52,6 +53,9 @@ class Train_Tab():
 
             # Load user preferences
             prefs = pm.get_preferences(current_user)
+
+            # Stop Flag
+            self.stop_flag = gr.State(False)
 
             # States for saving final training results
             self.final_accuracy = gr.State()
@@ -107,6 +111,7 @@ class Train_Tab():
             with gr.Group():
                 gr.Markdown("Training")
                 self.train_btn = gr.Button("Start Training")
+                self.stop_btn = gr.Button("Stop Training")
                 with gr.Row(equal_height=True):
                     self.train_status = gr.Textbox(label="Status", lines=10)
                     self.train_graph = gr.Plot(label="Loss Curve")
@@ -135,6 +140,12 @@ class Train_Tab():
             inputs=[self.train_path_input, self.epoch_input, self.lr_input, self.bs_input, self.layer1_input, self.layer2_input, self.layer3_input, self.layer4_input, self.train_transforms_input, self.earlystopping_input, self.patience_input, self.archtype_input, self.dropout_input],
             outputs=[self.train_status, self.train_graph, self.acc_graph, self.gpu_plot, self.cpu_plot, self.analytics_json])
 
+            self.stop_btn.click(
+                fn=self.request_stop,
+                inputs=[],
+                outputs=[self.train_status]
+            )
+
             self.save_btn.click(
             fn=self.save_model,
             inputs=[self.current_user, self.save_model_name, self.final_accuracy, self.final_loss, self.final_epochs],
@@ -143,6 +154,8 @@ class Train_Tab():
     def train_pipeline(self, train_folder, epochs, lr, bs, layer1, layer2, layer3, layer4, selected_transforms, earlystopping, patience, arch_type, dropout):
         """Full training pipeline, handling input validation, build transforms, load dataset, build model, train model, stream live metrics + analytics"""
         try:
+            # Reset stop flag for new training session
+            self.stop_flag.value = False
             # Handle Gradio File objects OR plain strings
             path = train_folder.name if hasattr(train_folder, "name") else train_folder
 
@@ -222,13 +235,20 @@ class Train_Tab():
             mm.build(arch_type, layer1, layer2, layer3, layer4, dropout)
 
             # Start training generator
-            gen =  mm.train(earlystopping, patience, epochs, lr)
+            gen =  mm.train(earlystopping, patience, epochs, lr, stop_callback = lambda: self.stop_flag.value)
 
             # Stream Training Output
             while True:
+                if self.stop_flag.value:
+                    yield "Training stopped by user.", None, None, None, None, None
+                    break
                 try:
                     log, losses, accuracies, analytics = next(gen)
 
+                    if self.stop_flag.value:
+                        yield "Training stopped by user.", None, None, None, None, None
+                        break
+                    
                     # Track system analytics
                     self.gpu_history.append(analytics["gpu"]["load"] if analytics["gpu"] else 0)
                     self.cpu_history.append(analytics["cpu"])
@@ -304,6 +324,14 @@ class Train_Tab():
         # Error handling in case of Exception
         except Exception as e:
             return gr.Warning(str(e))
+    
+    def request_stop(self):
+        """Stops training if the user presses the stop button"""
+        self.stop_flag.value = True
+        if NOTIFICATIONS_ENABLED:
+            gr.Info("Stopping training...")
+        if SOUNDSENABLED:
+            pygame.mixer.music.play()
     
     def refresh_preferences(self, user):
         """Refresh UI defaults based on user preferences."""
