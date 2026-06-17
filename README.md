@@ -39,6 +39,12 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Create a .env file and insert a Groq API key from this link: `https://console.groq.com/keys`.
+
+```bash
+api_key = "YOUR_API_KEY"
+```
+
 ## Running the App
 
 Start the application with:
@@ -75,7 +81,7 @@ To use this dataset in any dataset entry, simply pass in the base folder, and th
 - `users.json` stores user credentials and profile preferences.
 - Saved model files are located in `saved_models/`.
 - The app uses `pygame` for audio notifications and `gradio` for the web UI.
-- If you are uploading a dataset, it MUST be in the following structure:
+- If you are uploading a dataset, it MUST be in the following structure (Can have more classes):
 
 - `datasets/hymenoptera_data/` - Example Dataset
   - `datasets/hymenoptera_data/train` - Training directory of the dataset

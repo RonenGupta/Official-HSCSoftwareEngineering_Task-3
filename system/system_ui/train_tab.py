@@ -6,7 +6,6 @@ from system.system_functions.profilehandler import ProfileManager
 from torchvision import transforms
 from system.backend_config.config import USER_DB
 import json
-import time
 import os
 import pygame
 from system.backend_config.config import NOTIFICATIONS_ENABLED, SOUNDSENABLED, MUSIC_FOLDER
