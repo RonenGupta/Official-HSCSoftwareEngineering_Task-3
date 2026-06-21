@@ -330,15 +330,11 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
                 outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, featureviz_tab, settings_tab, app_state]
             )
 
-            # Login to Dashboard
+            # Login
             login.login_btn.click(
                 fn=login.login_pipeline,
                 inputs=[login.login_username, login.login_password],
                 outputs=[login.login_status, login.current_user]
-            ).then(
-                fn=show_dashboard,
-                inputs=[login.login_status, login.current_user, app_state],
-                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, featureviz_tab, settings_tab, dashboard.welcome, dashboard.model_count, dashboard.last_model, dashboard.last_accuracy, dashboard.last_time, global_profile_pic, *dashboard.get_card_components(), app_state]
             )
 
             # Dashboard button

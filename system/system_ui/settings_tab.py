@@ -269,9 +269,10 @@ class Settings():
         try:
             # Get full path of track, set volume based on current volume
             full_path = os.path.join(MUSIC_FOLDER, track)
-            pygame.mixer.music.load(full_path)
-            pygame.mixer.music.set_volume(CURRENTVOLUME)
-            pygame.mixer.music.play()
+            sound = pygame.mixer.Sound(full_path)
+            sound.set_volume(CURRENTVOLUME)
+            channel = pygame.mixer.Channel(1)
+            channel.play(sound)
             return gr.Info(f"Playing: {track}")
         # Error handling in case of Exception
         except Exception as e:
