@@ -16,7 +16,7 @@ gm= GraphManager()
 pm = ProfileManager()
 
 # Load notification sound
-music_path = f"/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/{MUSIC_FOLDER}/ping.mp3"
+music_path = os.path.join(MUSIC_FOLDER, "ping.mp3")
 pygame.mixer.music.load(music_path)
 
 class Settings():

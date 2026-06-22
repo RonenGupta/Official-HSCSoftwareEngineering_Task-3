@@ -15,7 +15,7 @@ from system.backend_config.config import NOTIFICATIONS_ENABLED, SOUNDSENABLED, U
 pygame.mixer.init()
 
 # Load notification sound
-music_path = f"/Users/RonenGupta/Desktop/HSCSoftwareEngineering_Task-3/{MUSIC_FOLDER}/ping.mp3"
+music_path = os.path.join(MUSIC_FOLDER, "ping.mp3")
 pygame.mixer.music.load(music_path)
 
 # Instantiate managers for models, graphs, user profiles
