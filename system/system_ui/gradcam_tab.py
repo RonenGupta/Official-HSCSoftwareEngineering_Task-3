@@ -141,7 +141,11 @@ class GradCAM():
             pil_image, _ = mm.test_dataset[index]
 
             # Compute GradCAM
-            predicted_class, originimage, cam_image = mm.gradcam(username, pil_image, model_name, num_classes)
+            try:
+                predicted_class, originimage, cam_image = mm.gradcam(username, pil_image, model_name, num_classes)
+            except Exception as e:
+                gr.Warning("The dataset you have chosen has not been used by this model in training.")
+                return None, None, None
             predicted_label = class_names[predicted_class].capitalize()
 
             # Notifications

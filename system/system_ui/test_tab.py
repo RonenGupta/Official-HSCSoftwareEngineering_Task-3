@@ -97,7 +97,11 @@ class Test_Tab():
             num_classes = len(class_names)
 
             # Load model
-            loaded_model = mm.load_model(username, model, num_classes)
+            try:
+                loaded_model = mm.load_model(username, model, num_classes)
+            except Exception:
+                gr.Warning("The dataset you have chosen has not been used by this model in training.")
+                return None, None
             
             # Run evaluation
             test_metrics, all_labels, all_preds =  mm.test(loaded_model)
