@@ -110,6 +110,7 @@ class Settings():
         # Session Controls
         with gr.Group():
             gr.Markdown("Session")
+            self.delete_acc_btn = gr.Button("Delete Account")
             self.logout_btn = gr.Button("Log Out")
             self.close_btn = gr.Button("Close App")
         
@@ -168,6 +169,7 @@ class Settings():
             outputs=[]
         )
 
+        self.delete_acc_btn.click(fn=self.delete_account, inputs=[self.current_user], outputs=[])
         self.logout_btn.click(fn=self.logout)
         self.close_btn.click(fn=self.close_app)
     
@@ -287,6 +289,55 @@ class Settings():
     def list_music_files():
         """List music files"""
         return [f for f in os.listdir(MUSIC_FOLDER) if f.endswith(".mp3")]
+    
+    def delete_account(self, username):
+        """Delete Account"""
+        try:
+            if not username:
+                return gr.Warning("No user logged in.")
+
+            with open(USER_DB, "r") as f:
+                users = json.load(f)
+
+            model_dir = "saved_models"
+            for file in os.listdir(model_dir):
+                if file.startswith(f"{username}"):
+                    os.remove(os.path.join(model_dir, file))
+
+            report_dir = "reports"
+            if os.path.exists(report_dir):
+                for file in os.listdir(report_dir):
+                    if file.startswith(f"{username}"):
+                        os.remove(os.path.join(report_dir, file))
+
+            tmp_dir = "reports/tmp"
+            if os.path.exists(tmp_dir):
+                for file in os.listdir(tmp_dir):
+                    if username in file:
+                        os.remove(os.path.join(tmp_dir, file))
+
+            pic_path = f"static/profile_pics/{username}.png"
+            if os.path.exists(pic_path):
+                os.remove(pic_path)
+            
+            del users[username]
+
+            self.current_user.value = None
+            
+            with open(USER_DB, "w") as f:
+                json.dump(users, f, indent=4)
+
+            if SOUNDSENABLED:
+                pygame.mixer.music.load(music_path)
+                pygame.mixer.music.play()
+            
+            if NOTIFICATIONS_ENABLED:
+                return gr.Info("Account deleted successfully!", duration=6)
+            
+            return None
+
+        except Exception as e:
+            return gr.Warning(f"Failed to delete account: {e}"), None
 
     def logout(self):
         """Logout"""

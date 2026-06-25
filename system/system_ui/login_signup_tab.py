@@ -182,7 +182,7 @@ class LoginSignUp():
                 pygame.mixer.music.load(notification_sound)
                 pygame.mixer.music.play()
 
-            return "Account created sucessfully!", None
+            return "Account created sucessfully!"
         
         # Error Handling in case of Exception
         except Exception as e:

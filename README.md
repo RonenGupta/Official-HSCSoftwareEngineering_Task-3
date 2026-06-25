@@ -1,4 +1,4 @@
-# HSC Software Engineering Task 3
+# HSC Software Engineering Task 3 - MyCNN
 
 ## Overview
 

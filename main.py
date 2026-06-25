@@ -103,7 +103,10 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         app_state_dict["user"] = user
         
          # If not logged in, redirect to login
-        if not user:
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+
+        if not user or user not in users:
             gr.Warning("Please login before accessing other tabs.", duration=6)
             return (
             *[gr.update(elem_classes="animate__animated animate__fadeInLeft")   
@@ -148,7 +151,10 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         app_state_dict["current_tab"] = "train"
         app_state_dict["user"] = user
 
-        if not user:
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+
+        if not user or user not in users:
             gr.Warning("Please login before accessing other tabs.", duration=6)
 
             return (
@@ -184,7 +190,9 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         app_state_dict["current_tab"] = "test"
         app_state_dict["user"] = user
 
-        if not user:
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+        if not user or user not in users:
             gr.Warning("Please login before accessing other tabs.", duration=6)
 
             return (
@@ -217,7 +225,10 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         """GRADCAM TAB"""
         app_state_dict["current_tab"] = "gradcam"
         app_state_dict["user"] = user
-        if not user:
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+
+        if not user or user not in users:
             gr.Warning("Please login before accessing other tabs.", duration=6)
 
             return (
@@ -247,7 +258,10 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
         """FEATURE VIZ TAB"""
         app_state_dict["current_tab"] = "featureviz"
         app_state_dict["user"] = user
-        if not user:
+        with open(USER_DB, "r") as f:
+            users = json.load(f)
+
+        if not user or user not in users:
             gr.Warning("Please login before accessing other tabs.", duration=6)
 
             return (
@@ -285,8 +299,8 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             app_state_dict
         )
     
-    def logout():
-        """LOGOUT"""
+    def redirect():
+        """Redirects to the login after logging out/deleting account"""
         return (
             *[gr.update(elem_classes="animate__animated animate__fadeInLeft")
             if i == 0 else gr.update(elem_classes="hidden-tab") 
@@ -379,9 +393,16 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
                 outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, featureviz_tab, settings_tab, app_state]
             )
 
+            # Delete Account button
+            settings.delete_acc_btn.click(
+                fn=redirect,
+                inputs=[],
+                outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, featureviz_tab, settings_tab, login.current_user]
+            )
+
             # Logout button
             settings.logout_btn.click(
-                fn=logout,
+                fn=redirect,
                 inputs=[],
                 outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, featureviz_tab, settings_tab, login.current_user]
             )
