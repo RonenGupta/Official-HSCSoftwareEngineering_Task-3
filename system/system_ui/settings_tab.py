@@ -293,12 +293,15 @@ class Settings():
     def delete_account(self, username):
         """Delete Account"""
         try:
+            # Check if user logged in
             if not username:
                 return gr.Warning("No user logged in.")
 
+            # Load users from the database
             with open(USER_DB, "r") as f:
                 users = json.load(f)
 
+            # Get directories of the user for saved models, reports, temp directory for images, profile picture
             model_dir = "saved_models"
             for file in os.listdir(model_dir):
                 if file.startswith(f"{username}"):
@@ -320,10 +323,13 @@ class Settings():
             if os.path.exists(pic_path):
                 os.remove(pic_path)
             
+            # Delete the entire entry of the user from the dict
             del users[username]
 
+            # Set current_user to none
             self.current_user.value = None
             
+            # Write all changes to the database
             with open(USER_DB, "w") as f:
                 json.dump(users, f, indent=4)
 

@@ -97,10 +97,16 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
             app_state_dict
         )
 
+    # All show functions use similar functionality, refer from show_dashboard comments
     def show_dashboard(status, user, app_state_dict):
         """Dashboard Tab"""
+        
+        # Set current app state to show the current tab as dashboard and user as the logged in user
         app_state_dict["current_tab"] = "dashboard"
         app_state_dict["user"] = user
+        
+        # Update dashboard instance to the correct user
+        dashboard.current_user = user
         
          # If not logged in, redirect to login
         with open(USER_DB, "r") as f:
@@ -346,9 +352,16 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
 
             # Login
             login.login_btn.click(
-                fn=login.login_pipeline,
-                inputs=[login.login_username, login.login_password],
-                outputs=[login.login_status, login.current_user]
+                fn=lambda username, password, app_state_dict: (
+                    *login.login_pipeline(username, password),
+                    {**app_state_dict, 
+                     "user": login.current_user.value,
+                     "current_tab": "login"
+                    },
+                gr.update(elem_classes="animate__animated animate__fadeInLeft")
+                ),
+                inputs=[login.login_username, login.login_password, app_state],
+                outputs=[login.login_status, login.current_user, app_state, login_tab]
             )
 
             # Dashboard button
@@ -393,7 +406,7 @@ with gr.Blocks(fill_height=True, fill_width=True) as demo:
                 outputs=[login_tab, dashboard_tab, train_tab, test_tab, gradcam_tab, featureviz_tab, settings_tab, app_state]
             )
 
-            # Delete Account button
+            # Delete Account button (Same redirect used for logging out)
             settings.delete_acc_btn.click(
                 fn=redirect,
                 inputs=[],

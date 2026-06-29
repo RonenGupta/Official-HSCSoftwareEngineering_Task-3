@@ -1012,6 +1012,26 @@
             "sound": true,
             "profile_picture": "static/profile_pics/username1.png"
         },
-        "last_login": "2026-06-25 14:27:47.703116"
+        "last_login": "2026-06-29 19:32:45.018573"
+    },
+    "levinshao": {
+        "email": "levinsha@gmail.com",
+        "password": "$2b$12$UGTY.p.eCBhvKV56jiXCTOq95fB0YwDAj8Gk8fpP68.grhFrcvRCC",
+        "models": {},
+        "join_date": "2026-06-25 14:53:55.728080",
+        "preferences": {
+            "default_architecture": "ResNet18",
+            "default_learning_rate": 0.001,
+            "default_epochs": 10,
+            "default_batch_size": 32,
+            "default_dropout": 0.2,
+            "default_activation_layer": "layer4",
+            "default_featureviz_layer": "layer4",
+            "default_featureviz_channel": 0,
+            "notifications": true,
+            "sound": true,
+            "profile_picture": null
+        },
+        "last_login": "2026-06-25 14:54:29.844415"
     }
 }

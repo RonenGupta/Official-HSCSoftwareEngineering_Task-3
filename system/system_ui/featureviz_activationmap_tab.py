@@ -44,7 +44,8 @@ class FeatureViz():
             gr.Markdown("Layer and Channel")
             self.layer_name = gr.Textbox(label="Layer name (e.g. layer4.1.conv2)", value=prefs.get("default_featureviz_layer"))
             self.channel_idx_input = gr.Number(label = "Channel Index", elem_id="ch_idx", value=prefs.get("default_featureviz_channel"))
-            self.input_image = gr.Image(label="Input Image", type="pil", elem_id="img_in", visible=False)
+            with gr.Group() as self.input_image_group:
+                self.input_image = gr.Image(label="Input Image", type="pil", elem_id="img_in", visible=True)
 
         # Optimization hyperparameters
         with gr.Group():
@@ -69,7 +70,7 @@ class FeatureViz():
         self.vis_mode.change(
             fn=self.update_visibility,
             inputs=[self.vis_mode],
-            outputs=[self.channel_idx_input, self.input_image, self.img_size, self.steps, self.lr]
+            outputs=[self.channel_idx_input, self.input_image_group, self.img_size, self.steps, self.lr]
         )
 
         # Run feature visualization
@@ -209,7 +210,7 @@ class FeatureViz():
         """Update visibility for channel_idx_input, input_image, img_size, steps, lr"""
         if mode == "Channel Visualization":
             # Hide input image (index 1), show everything else
-            return [gr.update(visible=False) if i == 1 else gr.update(visible=True)
+            return [gr.update(visible=False) if i == 1 else gr.update(visible = True)
                     for i in range(5)]
 
         elif mode == "Activation Maps":

@@ -1,6 +1,6 @@
 .gitattributes
-venv/
 __pycache__/
+venv/
 users.json
 .env
 reports/tmp

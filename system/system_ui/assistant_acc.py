@@ -3,7 +3,8 @@ import os
 import json
 from gtts import gTTS
 import io
-from groq import Groq
+from groq import Groq, GroqError
+import httpx
 import requests
 
 # Gets API key from env
@@ -156,5 +157,15 @@ class MyCNN_Assistant():
 
             # Return empty text (UI uses chat history instead), audio, and updated history
             return "", audio, chat_history
-        except requests.exceptions.ConnectionError as e:
-            return gr.Warning(e)
+        # Exception if an API connection error occurs
+        except GroqError as e:
+            return gr.Warning(f"Groq API error. Please check your API key or internet connection: {str(e)}")
+        
+        except httpx.ConnectError:
+            return gr.Warning("Unable to reach Groq servers. Check your internet connection.")
+        
+        except httpx.HTTPError as e:
+            return gr.Warning(f"HTTP error while contacting Groq {str(e)}")
+        
+        except Exception as e:
+            return gr.Warning(f"Unexpected error: {str(e)}")

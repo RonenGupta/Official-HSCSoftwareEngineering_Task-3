@@ -238,12 +238,13 @@ class Train_Tab():
 
             # Stream Training Output
             while True:
+                # Check if training stopped before the first epoch begins
                 if self.stop_flag.value:
                     yield "Training stopped by user.", None, None, None, None, None
                     break
                 try:
                     log, losses, accuracies, analytics = next(gen)
-
+                    # Check if training stopped mid-epoch
                     if self.stop_flag.value:
                         yield "Training stopped by user.", None, None, None, None, None
                         break

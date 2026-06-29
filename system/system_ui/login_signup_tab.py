@@ -182,6 +182,7 @@ class LoginSignUp():
                 pygame.mixer.music.load(notification_sound)
                 pygame.mixer.music.play()
 
+            # Success return message
             return "Account created sucessfully!"
         
         # Error Handling in case of Exception
@@ -219,6 +220,9 @@ class LoginSignUp():
             users[real_user]["last_login"] = str(datetime.datetime.now())
             self.save_users(users)
 
+            # Set current user
+            self.current_user.value = real_user
+            
             # Notifications
             if NOTIFICATIONS_ENABLED:
                 gr.Info("Log In completed successfully!", duration=5)
