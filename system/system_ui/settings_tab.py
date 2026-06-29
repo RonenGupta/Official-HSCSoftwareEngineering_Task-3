@@ -45,6 +45,9 @@ class Settings():
         with gr.Group():
             gr.Markdown("Profile Preferences")
 
+            # Music channel for custom music and included music
+            self.music_channel = pygame.mixer.Channel(1)
+
             # Default architecture
             self.pref_arch = gr.Dropdown(
                 ["ResNet18", "ResNet34", "ResNet50", "ResNet101", "ResNet152"],
@@ -273,8 +276,7 @@ class Settings():
             full_path = os.path.join(MUSIC_FOLDER, track)
             sound = pygame.mixer.Sound(full_path)
             sound.set_volume(CURRENTVOLUME)
-            channel = pygame.mixer.Channel(1)
-            channel.play(sound)
+            self.music_channel.play(sound)
             return gr.Info(f"Playing: {track}")
         # Error handling in case of Exception
         except Exception as e:
@@ -282,7 +284,7 @@ class Settings():
     
     def stop_music(self):
         """Stop music"""
-        pygame.mixer.music.stop()
+        self.music_channel.stop()
         return gr.Info(f"Music stopped")
 
     @staticmethod

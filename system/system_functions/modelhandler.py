@@ -672,6 +672,7 @@ class ModelManager():
         # Error handling in case of a RuntimeError
         except Exception as e:
             raise RuntimeError(f"Feature visualization failed: {e}")
+        
     def get_activation_maps(self, model, layer_name, image_tensor):
         """Extract activation maps from a specific layer during a forward pass. Takes model, 
         layer_name, image of type tensor, returns activation maps"""
