@@ -27,7 +27,6 @@ This repository contains an interactive CNN-based application built with Gradio 
 - `saved_models/` - Persisted trained model files
 - `users.json` - User database file with saved user profiles and preferences
 - `static/` - CSS, audio, and profile image assets
-- `tests/` - Pytest unit tests
 
 ## Requirements
 
@@ -79,6 +78,7 @@ To use this dataset in any dataset entry, simply pass in the base folder, and th
 ## Notes (IMPORTANT)
 
 - `users.json` stores user credentials and profile preferences.
+- archive (2) is a separate dataset specialising in the classification of shoe brands, used for testing multi-class classification. This can be utilised as an alternative to hymenoptera.
 - Saved model files are located in `saved_models/`.
 - The app uses `pygame` for audio notifications and `gradio` for the web UI.
 - If you are uploading a dataset, it MUST be in the following structure (Can have more classes):
