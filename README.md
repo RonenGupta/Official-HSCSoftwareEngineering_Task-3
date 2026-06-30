@@ -59,7 +59,7 @@ Then open the local Gradio URL shown in the terminal.
 1. Open the app in your browser.
 2. Create a new account or log in using existing credentials.
 3. Use the Dashboard to view saved models and user activity.
-4. Train new models from the Train tab using your dataset.
+4. Train new models from the Train tab using your dataset. (Make sure to add your dataset into the datasets folder beforehand)
 5. Evaluate saved models in the Test tab and view confusion matrices.
 6. Explore model explainability with GradCAM and FeatureViz.
 7. Adjust profile settings and use the assistant sidebar.
@@ -73,7 +73,7 @@ The repository includes a sample dataset structure under `datasets/hymenoptera_d
 - `test/ants`
 - `test/bees`
 
-To use this dataset in any dataset entry, simply pass in the base folder, and the program will interpret train and test folders.
+To use this dataset in any dataset entry, simply pass in the base folder, and the program will interpret train and test folders. (Make sure to add your dataset in the datasets folder beforehand)
 
 ## Notes (IMPORTANT)
 
